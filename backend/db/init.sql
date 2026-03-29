@@ -80,6 +80,19 @@ CREATE TABLE IF NOT EXISTS currency_rates (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS bills (
+  id SERIAL PRIMARY KEY,
+  original_name VARCHAR(255) NOT NULL,
+  stored_name VARCHAR(255) NOT NULL,
+  file_path TEXT NOT NULL,
+  file_url TEXT NOT NULL,
+  mime_type VARCHAR(255) NOT NULL,
+  file_size INTEGER NOT NULL CHECK (file_size >= 0),
+  ocr_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (ocr_status IN ('pending', 'processing', 'completed', 'failed')),
+  ocr_text TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id);
 CREATE INDEX IF NOT EXISTS idx_users_manager_id ON users(manager_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_company_id ON expenses(company_id);
@@ -94,6 +107,8 @@ CREATE INDEX IF NOT EXISTS idx_budgets_company_id ON budgets(company_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_expense_id ON audit_logs(expense_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_bills_ocr_status ON bills(ocr_status);
+CREATE INDEX IF NOT EXISTS idx_bills_created_at ON bills(created_at);
 
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$

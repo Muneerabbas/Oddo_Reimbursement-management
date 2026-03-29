@@ -3,13 +3,16 @@ import cors from "cors";
 import healthRoutes from "./routes/healthRoutes";
 import { env } from "./config/env";
 import { testDbConnection } from "./config/db";
+import billRoutes from "./routes/billRoutes";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(env.billUploadPublicPath, express.static(env.billUploadDir));
 
 app.use("/api", healthRoutes);
+app.use("/api", billRoutes);
 
 const startServer = async (): Promise<void> => {
   try {

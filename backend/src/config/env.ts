@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import path from "path";
 
 dotenv.config();
 
@@ -37,4 +38,7 @@ export const env = {
   dbSsl: process.env.DB_SSL === "true",
   dbRequiredOnStartup: process.env.DB_REQUIRED_ON_STARTUP === "true",
   jwtSecret: process.env.JWT_SECRET || "change-me",
+  billUploadDir: path.resolve(process.cwd(), process.env.BILL_UPLOAD_DIR || "uploads/bills"),
+  billUploadPublicPath: process.env.BILL_UPLOAD_PUBLIC_PATH || "/uploads/bills",
+  billUploadMaxSizeBytes: Number(process.env.BILL_UPLOAD_MAX_SIZE_MB || 10) * 1024 * 1024,
 };
