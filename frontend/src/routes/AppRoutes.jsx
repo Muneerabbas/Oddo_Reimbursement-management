@@ -12,6 +12,7 @@ import SubmitExpense from '../pages/expenses/SubmitExpense';
 import Approvals from '../pages/approvals/Approvals';
 import Users from '../pages/admin/Users';
 import ApprovalRules from '../pages/admin/ApprovalRules';
+import Teams from '../pages/teams/Teams';
 
 const AppRoutes = () => {
   return (
@@ -44,6 +45,7 @@ const AppRoutes = () => {
             
             {/* Admin only routes */}
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="teams" element={<Teams />} />
               <Route path="admin" element={<Navigate to="/admin/users" replace />} />
               <Route path="admin/users" element={<Users />} />
               <Route path="admin/approval-rules" element={<ApprovalRules />} />

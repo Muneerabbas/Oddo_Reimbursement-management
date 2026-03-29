@@ -68,6 +68,17 @@ const DashboardHome = () => {
         <p className="text-sm sm:text-base text-slate-500 mt-2">
           Here's what's happening with your expenses today.
         </p>
+        {user?.company?.name && (
+          <p className="text-sm text-slate-600 mt-2">
+            <span className="font-medium">{user.company.name}</span>
+            {user.company.defaultCurrency
+              ? ` · Base currency ${user.company.defaultCurrency}`
+              : ''}
+          </p>
+        )}
+        {user?.company?.about && (
+          <p className="text-sm text-slate-500 mt-2 max-w-2xl leading-relaxed">{user.company.about}</p>
+        )}
       </header>
 
       {/* Primary Analytical Stat Grid */}

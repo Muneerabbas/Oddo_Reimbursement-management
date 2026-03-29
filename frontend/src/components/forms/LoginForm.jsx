@@ -35,12 +35,13 @@ const LoginForm = () => {
       navigate('/dashboard', { replace: true });
 
     } catch (err) {
-      if (err.response?.status === 401) {
-         setError('Invalid credentials provided.');
+      const status = err.response?.status;
+      if (status === 401) {
+        setError('Invalid email or password.');
       } else if (err.code === 'ERR_NETWORK') {
-         setError('Cannot reach authentication server. Is your backend running?');
+        setError('Cannot reach authentication server. Is your backend running?');
       } else {
-         setError(err.response?.data?.message || 'An unexpected server error occurred.');
+        setError(err.message || err.response?.data?.message || 'An unexpected server error occurred.');
       }
     } finally {
       setIsLoading(false);

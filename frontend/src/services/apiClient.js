@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+/** Must match AuthContext listener — keeps session in sync when the API returns 401 */
+export const AUTH_SESSION_EXPIRED_EVENT = 'auth:session-expired';
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -26,9 +29,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access, e.g., redirect to login or clear token
       localStorage.removeItem('token');
-      // window.location.href = '/login'; // Optional: Redirect
+      localStorage.removeItem('user');
+      window.dispatchEvent(new CustomEvent(AUTH_SESSION_EXPIRED_EVENT));
     }
     return Promise.reject(error);
   }

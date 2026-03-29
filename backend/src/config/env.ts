@@ -41,4 +41,5 @@ export const env = {
   billUploadDir: path.resolve(process.cwd(), process.env.BILL_UPLOAD_DIR || "uploads/bills"),
   billUploadPublicPath: process.env.BILL_UPLOAD_PUBLIC_PATH || "/uploads/bills",
   billUploadMaxSizeBytes: Number(process.env.BILL_UPLOAD_MAX_SIZE_MB || 10) * 1024 * 1024,
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
 };
