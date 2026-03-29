@@ -6,8 +6,12 @@ import notificationService from '../../services/notificationService';
 import NotificationBell from './NotificationBell';
 
 const Navbar = ({ toggleMobileMenu }) => {
-  const { user, role, logout } = useAuth();
-  const { selectedCurrency, setSelectedCurrency, currencyOptions } = useContext(CurrencyContext);
+  const { user, role, displayRole, logout } = useAuth(); // Pull global session context
+  const {
+    selectedCurrency,
+    setSelectedCurrency,
+    currencyOptions = [],
+  } = useContext(CurrencyContext);
 
   const handleLogout = () => {
     logout();
@@ -53,9 +57,9 @@ const Navbar = ({ toggleMobileMenu }) => {
         )}
 
         {/* Role Badge - Hidden on very small screens for cleanliness */}
-        {role && (
+        {displayRole && (
           <span className="hidden sm:inline-block px-3 py-1 bg-primary/10 text-primary font-bold text-xs rounded-full uppercase tracking-wide">
-            {role}
+            {displayRole}
           </span>
         )}
 
