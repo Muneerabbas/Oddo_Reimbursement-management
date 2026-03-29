@@ -24,14 +24,12 @@ async function request(fn) {
 }
 
 const approvalRuleService = {
-  getApprovalRuleConfig: async () => (
-    loadingService.withGlobalLoading(() => request(async () => {
-      const { data } = await apiClient.get('/approval-rules');
-      return {
-        rules: Array.isArray(data.rules) ? data.rules : [],
-      };
-    }))
-  ),
+  getApprovalRuleConfig: async () => request(async () => {
+    const { data } = await apiClient.get('/approval-rules');
+    return {
+      rules: Array.isArray(data.rules) ? data.rules : [],
+    };
+  }),
 
   saveApprovalRuleConfig: async (payload) => (
     loadingService.withGlobalLoading(() => request(async () => {

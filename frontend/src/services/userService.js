@@ -73,10 +73,8 @@ const assertUniqueEmail = (email, ignoreId = null) => {
 
 const userService = {
   listUsers: async () => {
-    return loadingService.withGlobalLoading(async () => {
-      await wait(NETWORK_DELAY_MS);
-      return mockUsers.map((record) => toViewModel(record, mockUsers));
-    });
+    await wait(NETWORK_DELAY_MS);
+    return mockUsers.map((record) => toViewModel(record, mockUsers));
   },
 
   createUser: async (payload) => {

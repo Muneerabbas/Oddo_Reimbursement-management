@@ -54,12 +54,12 @@ const authService = {
     }
   },
 
-  getCountries: async () => loadingService.withGlobalLoading(async () => {
+  getCountries: async () => {
     const response = await axios.get('https://restcountries.com/v3.1/all?fields=name,currencies,cca2');
     return response.data
       .filter((country) => country.cca2)
       .sort((a, b) => a.name.common.localeCompare(b.name.common));
-  }),
+  },
 };
 
 export default authService;
