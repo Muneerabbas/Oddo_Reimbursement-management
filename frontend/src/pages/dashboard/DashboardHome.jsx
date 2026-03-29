@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Clock, FileText, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, FileText, XCircle, Plus, Upload } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import EmptyState from '../../components/feedback/EmptyState';
 import { StatCardsSkeleton } from '../../components/feedback/Skeleton';
 import StatCard from '../../components/ui/StatCard';
 import PageHeader from '../../components/ui/PageHeader';
+import ExpenseTable from '../../components/ui/ExpenseTable';
 import dashboardService from '../../services/dashboardService';
 
 const DashboardHome = () => {
@@ -13,6 +14,10 @@ const DashboardHome = () => {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Table state
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 5;
 
   useEffect(() => {
     let internalCancel = false;
@@ -66,12 +71,31 @@ const DashboardHome = () => {
     );
   }
 
+  // Calculate total spend for chart percentages
+  const totalSpend = stats.categoryBreakdown?.reduce((sum, cat) => sum + cat.value, 0) || 1;
+
   return (
     <div className="page-stack">
-      <PageHeader
-        title={`Welcome back, ${user?.name ? user.name.split(' ')[0] : 'User'}`}
-        description="Here's what's happening with your expenses today."
-      />
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <PageHeader
+          title={`Welcome back, ${user?.name ? user.name.split(' ')[0] : 'User'}`}
+          description="Here's what's happening with your expenses today."
+        />
+        
+        {/* Quick Actions */}
+        {user?.role === 'employee' && (
+          <div className="flex items-center gap-3">
+            <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all">
+              <Upload size={16} />
+              <span className="hidden sm:inline">Upload Receipt</span>
+            </button>
+            <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all">
+              <Plus size={16} />
+              <span>New Expense</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {(companyMeta || companyDescription) && (
         <div className="panel-card-muted p-4">
@@ -115,13 +139,58 @@ const DashboardHome = () => {
         />
       </div>
 
-      <section className="mt-6">
-        <div className="panel-card flex h-64 flex-col items-center justify-center text-slate-400">
-          <FileText size={48} className="mb-4 text-slate-300 opacity-50" />
-          <p className="text-lg font-medium text-slate-500">Recent Activity Area</p>
-          <p className="text-sm">A data table can be placed here in the future.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
+        {/* Left Column: Recent Activity */}
+        <div className="lg:col-span-2 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-800">Recent Activity</h2>
+          <ExpenseTable 
+            data={stats.recentActivity || []}
+            currentPage={currentPage}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setCurrentPage}
+            onRowClick={(expense) => console.log('Row clicked', expense)}
+            onViewDocument={(expense) => console.log('View doc', expense)}
+          />
         </div>
-      </section>
+
+        {/* Right Column: Category Breakdown Chart */}
+        <div className="lg:col-span-1 space-y-4">
+           <h2 className="text-lg font-semibold text-slate-800">Category Breakdown</h2>
+           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 min-h-[400px]">
+             {stats.categoryBreakdown && stats.categoryBreakdown.length > 0 ? (
+               <div className="space-y-6 mt-2">
+                 {stats.categoryBreakdown.map((category) => {
+                   const percentage = Math.round((category.value / totalSpend) * 100);
+                   return (
+                     <div key={category.name} className="relative">
+                       <div className="flex items-center justify-between mb-2">
+                         <span className="text-sm font-medium text-slate-700">{category.name}</span>
+                         <span className="text-sm font-semibold text-slate-900">
+                           ${category.value.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                         </span>
+                       </div>
+                       <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                         <div 
+                           className={`h-2.5 rounded-full ${category.color} transition-all duration-1000 ease-out`} 
+                           style={{ width: `${percentage}%` }}
+                         ></div>
+                       </div>
+                       <div className="mt-1 text-xs text-slate-500 text-right">
+                         {percentage}% of total
+                       </div>
+                     </div>
+                   );
+                 })}
+               </div>
+             ) : (
+               <div className="flex h-full flex-col items-center justify-center text-slate-400 py-10">
+                 <FileText size={40} className="mb-4 text-slate-200" />
+                 <p className="text-sm font-medium">No category data available</p>
+               </div>
+             )}
+           </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,7 +7,7 @@ import Users from '../pages/admin/Users';
 import Approvals from '../pages/approvals/Approvals';
 import Login from '../pages/auth/Login';
 import Signup from '../pages/auth/Signup';
-import DashboardHome from '../pages/dashboard/DashboardHome';
+import RoleBasedDashboard from '../pages/dashboard/RoleBasedDashboard';
 import MyExpenses from '../pages/expenses/MyExpenses';
 import ScanReceipt from '../pages/expenses/ScanReceipt';
 import SubmitExpense from '../pages/expenses/SubmitExpense';
@@ -35,7 +35,7 @@ const AppRoutes = () => {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardLayout />}>
-            <Route path="dashboard" element={<DashboardHome />} />
+            <Route path="dashboard" element={<RoleBasedDashboard />} />
 
             <Route path="expenses" element={<MyExpenses />} />
             <Route path="expenses/new" element={<SubmitExpense />} />

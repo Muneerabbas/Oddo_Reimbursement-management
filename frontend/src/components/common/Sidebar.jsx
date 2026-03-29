@@ -23,7 +23,7 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
   // Map out standard navigation logic cleanly
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
-    { label: 'Submit Expense', path: '/expenses/new', icon: <PlusCircle size={20} /> },
+    ...(role === 'employee' ? [{ label: 'Submit Expense', path: '/expenses/new', icon: <PlusCircle size={20} /> }] : []),
     { label: 'My Expenses', path: '/expenses', icon: <List size={20} /> },
   ];
 
