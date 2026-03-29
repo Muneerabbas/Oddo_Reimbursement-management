@@ -33,6 +33,15 @@ function permissionSummary(role) {
   return labels.length ? labels.join(' · ') : '—';
 }
 
+const primaryActionClass =
+  'inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98]';
+
+const iconButtonBaseClass =
+  'inline-flex items-center justify-center rounded-md border px-2 py-2 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.96]';
+
+const neutralIconButtonClass = `${iconButtonBaseClass} border-slate-200 bg-white text-slate-500 shadow-sm hover:border-slate-300 hover:bg-slate-100 hover:text-primary hover:shadow-md focus-visible:ring-primary/25`;
+const dangerIconButtonClass = `${iconButtonBaseClass} border-red-100 bg-white text-slate-500 shadow-sm hover:border-red-200 hover:bg-red-50 hover:text-red-600 hover:shadow-md focus-visible:ring-red-200`;
+
 const Teams = () => {
   const [roles, setRoles] = useState([]);
   const [members, setMembers] = useState([]);
@@ -289,16 +298,18 @@ const Teams = () => {
           <button
             type="button"
             onClick={() => openEditMember(m)}
-            className="p-1.5 text-slate-500 hover:text-primary rounded-md hover:bg-slate-100"
+            className={neutralIconButtonClass}
             title="Edit"
+            aria-label={`Edit ${m.fullName}`}
           >
             <Pencil size={16} />
           </button>
           <button
             type="button"
             onClick={() => removeMember(m)}
-            className="p-1.5 text-slate-500 hover:text-red-600 rounded-md hover:bg-red-50"
+            className={dangerIconButtonClass}
             title="Remove"
+            aria-label={`Remove ${m.fullName}`}
           >
             <Trash2 size={16} />
           </button>
@@ -383,7 +394,7 @@ const Teams = () => {
             <button
               type="button"
               onClick={openCreateRole}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
+              className={primaryActionClass}
             >
               <Plus size={18} />
               New role
@@ -412,16 +423,18 @@ const Teams = () => {
                         <button
                           type="button"
                           onClick={() => openEditRole(role)}
-                          className="p-1.5 text-slate-500 hover:text-primary rounded-md hover:bg-slate-100"
+                          className={neutralIconButtonClass}
                           title="Edit role"
+                          aria-label={`Edit role ${role.name}`}
                         >
                           <Pencil size={16} />
                         </button>
                         <button
                           type="button"
                           onClick={() => removeRole(role)}
-                          className="p-1.5 text-slate-500 hover:text-red-600 rounded-md hover:bg-red-50"
+                          className={dangerIconButtonClass}
                           title="Delete role"
+                          aria-label={`Delete role ${role.name}`}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -495,7 +508,7 @@ const Teams = () => {
               <button
                 type="button"
                 onClick={() => openCreateMemberForRole(role)}
-                className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark shrink-0"
+                className={`${primaryActionClass} shrink-0`}
               >
                 <Plus size={18} />
                 Add to this role
@@ -565,14 +578,16 @@ const Teams = () => {
                           <button
                             type="button"
                             onClick={() => openEditMember(m)}
-                            className="p-1.5 text-slate-500 hover:text-primary rounded-md hover:bg-slate-100"
+                            className={neutralIconButtonClass}
+                            aria-label={`Edit ${m.fullName}`}
                           >
                             <Pencil size={16} />
                           </button>
                           <button
                             type="button"
                             onClick={() => removeMember(m)}
-                            className="p-1.5 text-slate-500 hover:text-red-600 rounded-md hover:bg-red-50"
+                            className={dangerIconButtonClass}
+                            aria-label={`Remove ${m.fullName}`}
                           >
                             <Trash2 size={16} />
                           </button>

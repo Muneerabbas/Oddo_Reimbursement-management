@@ -64,11 +64,11 @@ const Chatbot = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end">
       
       {/* Floating Chat Window */}
       <div 
-        className={`transform transition-all duration-300 origin-bottom-right mb-4 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 shadow-2xl backdrop-blur-xl sm:w-96 w-[calc(100vw-3rem)]
+        className={`pointer-events-auto transform transition-all duration-300 origin-bottom-right mb-4 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 shadow-2xl backdrop-blur-xl sm:w-96 w-[calc(100vw-3rem)]
           ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}
       >
         {/* Header */}
@@ -186,7 +186,7 @@ const Chatbot = () => {
       {/* Floating Action Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-primary/30"
+        className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-primary/30"
         aria-label="Toggle chat"
       >
         {isOpen ? <X size={28} /> : <MessageCircle size={28} />}
