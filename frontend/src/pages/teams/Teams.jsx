@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from
 import toast, { Toaster } from 'react-hot-toast';
 import teamService from '../../services/teamService';
 import { UsersRound, Plus, Pencil, Trash2, ShieldCheck, Settings2, GitBranch } from 'lucide-react';
+import { SkeletonBlock } from '../../components/feedback/Skeleton';
 const HierarchyAssign = lazy(() => import('../../components/teams/HierarchyAssign'));
 
 const PERM_META = [
@@ -33,6 +34,65 @@ function permissionSummary(role) {
   return labels.length ? labels.join(' · ') : '—';
 }
 
+const TeamsSkeleton = () => (
+  <div className="space-y-8">
+    <section className="space-y-3">
+      <SkeletonBlock className="h-7 w-48" />
+      <SkeletonBlock className="h-4 w-full max-w-2xl" />
+      <SkeletonBlock className="h-12 w-72 rounded-2xl" />
+    </section>
+
+    <section className="space-y-3">
+      <SkeletonBlock className="h-6 w-40" />
+      <SkeletonBlock className="h-4 w-96 max-w-full" />
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex justify-end border-b border-slate-100 px-4 py-3">
+          <SkeletonBlock className="h-9 w-28 rounded-lg" />
+        </div>
+        <div className="space-y-0">
+          {Array.from({ length: 4 }).map((_, rowIndex) => (
+            <div key={rowIndex} className="grid grid-cols-[1.1fr_90px_150px_1.9fr_96px] gap-4 border-b border-slate-100 px-4 py-4">
+              <SkeletonBlock className="h-5 w-24" />
+              <SkeletonBlock className="h-5 w-12" />
+              <SkeletonBlock className="h-5 w-24" />
+              <SkeletonBlock className="h-5 w-full" />
+              <div className="flex gap-2 justify-end">
+                <SkeletonBlock className="h-9 w-9 rounded-md" />
+                <SkeletonBlock className="h-9 w-9 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {Array.from({ length: 2 }).map((_, sectionIndex) => (
+      <section key={sectionIndex} className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            <SkeletonBlock className="h-6 w-36" />
+            <SkeletonBlock className="h-4 w-44" />
+          </div>
+          <SkeletonBlock className="h-9 w-32 rounded-lg" />
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          {Array.from({ length: 3 }).map((_, rowIndex) => (
+            <div key={rowIndex} className="grid grid-cols-[1.1fr_1.3fr_1fr_96px] gap-4 border-b border-slate-100 px-4 py-4">
+              <SkeletonBlock className="h-5 w-28" />
+              <SkeletonBlock className="h-5 w-full" />
+              <SkeletonBlock className="h-5 w-24" />
+              <div className="flex gap-2 justify-end">
+                <SkeletonBlock className="h-9 w-9 rounded-md" />
+                <SkeletonBlock className="h-9 w-9 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+);
+
 const Teams = () => {
   const [roles, setRoles] = useState([]);
   const [members, setMembers] = useState([]);
@@ -61,17 +121,30 @@ const Teams = () => {
   const [editForm, setEditForm] = useState({ companyRoleId: '', managerId: '' });
   const [teamsView, setTeamsView] = useState('people');
 
-  const load = useCallback(async () => {
+  const loadManagers = useCallback(async () => {
+    try {
+      const mgr = await teamService.listManagers();
+      setManagers(mgr);
+    } catch {
+      // Manager options are secondary to initial Teams render.
+    }
+  }, []);
+
+  const load = useCallback(async ({ includeManagers = true } = {}) => {
     setLoading(true);
     try {
-      const [r, m, mgr] = await Promise.all([
+      const [r, m] = await Promise.all([
         teamService.listRoles(),
         teamService.listMembers(),
-        teamService.listManagers(),
       ]);
       setRoles(r);
       setMembers(m);
-      setManagers(mgr);
+      setLoading(false);
+      if (includeManagers) {
+        await loadManagers();
+      } else {
+        loadManagers();
+      }
     } catch (e) {
       const status = e.response?.status;
       const base = e.message || 'Failed to load teams data.';
@@ -83,10 +156,10 @@ const Teams = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadManagers]);
 
   useEffect(() => {
-    load();
+    load({ includeManagers: false });
   }, [load]);
 
   const adminMembers = useMemo(
@@ -317,11 +390,7 @@ const Teams = () => {
   );
 
   if (loading && members.length === 0 && roles.length === 0) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <TeamsSkeleton />;
   }
 
   return (

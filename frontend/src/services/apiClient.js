@@ -80,35 +80,15 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    if (!config.skipGlobalLoader) {
-      loadingService.startLoading();
-      config.__loaderStarted = true;
-    }
-
     return config;
   },
-  (error) => {
-    if (error.config?.__loaderStarted) {
-      loadingService.stopLoading();
-    }
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
 apiClient.interceptors.response.use(
-  (response) => {
-    if (response.config?.__loaderStarted) {
-      loadingService.stopLoading();
-    }
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config || {};
-
-    if (originalRequest.__loaderStarted) {
-      loadingService.stopLoading();
-      originalRequest.__loaderStarted = false;
-    }
 
     const status = error.response?.status;
     const isUnauthorized = status === 401;

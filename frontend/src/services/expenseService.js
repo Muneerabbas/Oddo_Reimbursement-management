@@ -89,17 +89,13 @@ const expenseService = {
    * Fetch all expenses tied to the current user
    */
   getExpenses: async () => {
-    return loadingService.withGlobalLoading(async () => {
-      const { data } = await apiClient.get('/expenses');
-      return data.expenses || [];
-    });
+    const { data } = await apiClient.get('/expenses');
+    return data.expenses || [];
   },
 
   getExpenseLogs: async () => {
-    return loadingService.withGlobalLoading(async () => {
-      const { data } = await apiClient.get('/expenses/logs');
-      return data.logs || [];
-    });
+    const { data } = await apiClient.get('/expenses/logs');
+    return data.logs || [];
   },
 
   exportExpensesCsv: (expenses) => {
@@ -269,10 +265,8 @@ const expenseService = {
    * Fetch all team requests currently relying on the current Manager's approval
    */
   getPendingApprovals: async () => {
-    return loadingService.withGlobalLoading(async () => {
-      const { data } = await apiClient.get('/expenses/approvals/pending');
-      return data.approvals || [];
-    });
+    const { data } = await apiClient.get('/expenses/approvals/pending');
+    return data.approvals || [];
   },
 
   /**
