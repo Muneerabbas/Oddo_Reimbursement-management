@@ -9,8 +9,19 @@ import {
 
 export const AUTH_SESSION_EXPIRED_EVENT = 'auth:logout';
 
+function resolveApiBaseURL() {
+  const fromEnv = import.meta.env.VITE_API_BASE_URL;
+  if (fromEnv != null && String(fromEnv).trim() !== '') {
+    return String(fromEnv).trim().replace(/\/+$/, '');
+  }
+  // Dev: same-origin /api so Vite proxy hits the backend (see vite.config.js server.proxy).
+  if (import.meta.env.DEV) return '/api';
+  // Production / preview without proxy: set VITE_API_BASE_URL to your API origin + /api
+  return 'http://127.0.0.1:5000/api';
+}
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  baseURL: resolveApiBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -142,6 +153,13 @@ apiClient.interceptors.response.use(
 
     if (isUnauthorized) {
       notifyLoggedOut();
+    }
+
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      error.message =
+        import.meta.env.DEV
+          ? 'Cannot reach API. In dev, Vite proxies /api to the backend — ensure the backend is running and its PORT matches frontend/vite.config (reads ../backend/.env PORT, or set VITE_DEV_PROXY_TARGET).'
+          : 'Network error: check API URL (VITE_API_BASE_URL) and that the server is reachable.';
     }
 
     return Promise.reject(error);

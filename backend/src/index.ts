@@ -26,7 +26,7 @@ const startServer = async (): Promise<void> => {
   }
 
   app.listen(env.port, () => {
-    console.log(`Server running on port ${env.port}`);
+    console.log(`API listening at http://127.0.0.1:${env.port}/api (PORT from .env; Vite dev proxy must match)`);
   });
 };
 

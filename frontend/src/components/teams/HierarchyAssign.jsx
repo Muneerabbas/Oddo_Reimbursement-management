@@ -111,8 +111,8 @@ function HierarchyFlowInner({ onRefresh }) {
     setLoading(true);
     try {
       const data = await teamService.getHierarchy();
-      setNodes(layoutNodes(data.nodes));
-      setEdges(buildEdges(data.links));
+      setNodes(layoutNodes(data.nodes ?? []));
+      setEdges(buildEdges(data.links ?? []));
       setTimeout(() => fitView({ padding: 0.2, duration: 280 }), 40);
     } catch (e) {
       toast.error(e.message || 'Could not load hierarchy.');
