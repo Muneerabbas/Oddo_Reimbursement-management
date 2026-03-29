@@ -20,6 +20,60 @@ const expenseService = {
     });
   },
 
+  exportExpensesCsv: (expenses) => {
+    if (!Array.isArray(expenses) || expenses.length === 0) {
+      throw new Error('There are no expenses to export.');
+    }
+
+    const escapeCsvValue = (value) => {
+      const normalized = value == null ? '' : String(value);
+      if (/[",\n]/.test(normalized)) {
+        return `"${normalized.replace(/"/g, '""')}"`;
+      }
+      return normalized;
+    };
+
+    const headers = [
+      'Transaction ID',
+      'Date',
+      'Category',
+      'Description',
+      'Amount',
+      'Currency',
+      'Status',
+      'Receipt File Name',
+    ];
+
+    const rows = expenses.map((expense) => ([
+      expense.id,
+      expense.date,
+      expense.category,
+      expense.description,
+      expense.amount,
+      expense.currency,
+      expense.status,
+      expense.receiptFileName || '',
+    ]));
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escapeCsvValue).join(','))
+      .join('\n');
+
+    const fileBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const fileUrl = URL.createObjectURL(fileBlob);
+    const downloadLink = document.createElement('a');
+    const timestamp = new Date().toISOString().slice(0, 10);
+
+    downloadLink.href = fileUrl;
+    downloadLink.download = `expense-history-${timestamp}.csv`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(fileUrl);
+
+    return true;
+  },
+
   viewExpenseDocument: async (expenseId) => {
     return loadingService.withGlobalLoading(async () => {
       const response = await apiClient.get(`/expenses/${expenseId}/document`, {
