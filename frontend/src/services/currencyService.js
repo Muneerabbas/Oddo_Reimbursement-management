@@ -30,6 +30,10 @@ async function fetchRates(baseCurrency) {
   return data;
 }
 
+export async function getExchangeRates(baseCurrency) {
+  return await fetchRates(baseCurrency);
+}
+
 export async function convertCurrencyAmount(amount, baseCurrency, targetCurrency) {
   const a = Number(amount);
   const base = String(baseCurrency || '').toUpperCase();
@@ -48,5 +52,73 @@ export async function convertCurrencyAmount(amount, baseCurrency, targetCurrency
     convertedAmount: Number((a * rate).toFixed(2)),
     rate: Number(rate),
   };
+}
+
+export function normalizeCurrencyCode(code) {
+  if (!code || typeof code !== 'string') return 'USD';
+  return code.trim().toUpperCase();
+}
+
+export async function fetchCountryCurrencyCatalog() {
+  const response = await fetchWithTimeout('https://restcountries.com/v3.1/all?fields=name,currencies,cca2', 10000);
+  if (!response.ok) {
+    throw new Error('Failed to load country catalog from restcountries.com');
+  }
+  const data = await response.json();
+  
+  const countries = [];
+  const currenciesMap = new Map();
+
+  for (const item of data) {
+    if (!item.currencies) continue;
+    
+    // ISO 3166-1 alpha-2 country code
+    const code = item.cca2;
+    const name = item.name?.common || item.name?.official;
+    
+    if (!code || !name) continue;
+
+    const currencyCodes = Object.keys(item.currencies);
+    const countryCurrencies = [];
+    
+    for (const cCode of currencyCodes) {
+      const curr = item.currencies[cCode];
+      if (!currenciesMap.has(cCode)) {
+        currenciesMap.set(cCode, {
+          code: cCode,
+          name: curr.name || cCode,
+          symbol: curr.symbol || cCode
+        });
+      }
+      countryCurrencies.push({ code: cCode, name: curr.name });
+    }
+
+    if (countryCurrencies.length > 0) {
+      countries.push({
+        name,
+        code,
+        currencies: countryCurrencies,
+        defaultCurrency: countryCurrencies[0].code
+      });
+    }
+  }
+
+  // Sort alphabetically
+  countries.sort((a, b) => a.name.localeCompare(b.name));
+  const currencies = Array.from(currenciesMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+
+  return { countries, currencies };
+}
+
+export async function getDefaultCurrencyForCountryCode(cca2) {
+  if (!cca2) return 'USD';
+  try {
+    const { countries } = await fetchCountryCurrencyCatalog();
+    const country = countries.find(c => c.code === cca2.toUpperCase());
+    return country ? country.defaultCurrency : 'USD';
+  } catch (error) {
+    console.error('Failed to get default currency:', error);
+    return 'USD';
+  }
 }
 

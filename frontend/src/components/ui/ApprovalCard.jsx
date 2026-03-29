@@ -1,22 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { ArrowRightCircle, Calendar, CircleDollarSign, FolderOpen, UserRound } from 'lucide-react';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 
-const formatCurrencyValue = (amount, currency = 'USD') => {
-  const numeric = Number(amount ?? 0);
-  const safeAmount = Number.isFinite(numeric) ? numeric : 0;
 
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-    }).format(safeAmount);
-  } catch {
-    return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency}`;
-  }
-};
 
 const ApprovalCard = ({ request, onClick }) => {
+  const { formatAmount } = useContext(CurrencyContext);
   return (
     <button
       type="button"
@@ -72,7 +61,7 @@ const ApprovalCard = ({ request, onClick }) => {
             Amount
           </p>
           <p className="text-lg font-bold text-slate-900">
-            {formatCurrencyValue(request.amount, request.currency)}
+            {formatAmount(request.amount, request.currency)}
           </p>
         </div>
 

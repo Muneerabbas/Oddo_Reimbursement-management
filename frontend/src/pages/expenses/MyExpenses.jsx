@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 import {
   CheckCircle2,
   Clock3,
@@ -34,20 +35,7 @@ const getExpenseAmount = (expense) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const formatCurrencyValue = (amount, currency = 'USD') => {
-  const numeric = Number(amount ?? 0);
-  const safeAmount = Number.isFinite(numeric) ? numeric : 0;
 
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-    }).format(safeAmount);
-  } catch {
-    return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency}`;
-  }
-};
 
 const MyExpenses = () => {
   const navigate = useNavigate();
@@ -63,6 +51,8 @@ const MyExpenses = () => {
   });
   const [sortBy, setSortBy] = useState('latest');
   const [selectedExpense, setSelectedExpense] = useState(null);
+
+  const { selectedCurrency, convertAmount, formatAmount } = useContext(CurrencyContext);
 
   useEffect(() => {
     let unmounted = false;
@@ -150,9 +140,9 @@ const MyExpenses = () => {
 
     const sorted = [...filtered];
     if (sortBy === 'highest') {
-      sorted.sort((a, b) => getExpenseAmount(b) - getExpenseAmount(a));
+      sorted.sort((a, b) => convertAmount(getExpenseAmount(b), b.currency) - convertAmount(getExpenseAmount(a), a.currency));
     } else if (sortBy === 'lowest') {
-      sorted.sort((a, b) => getExpenseAmount(a) - getExpenseAmount(b));
+      sorted.sort((a, b) => convertAmount(getExpenseAmount(a), a.currency) - convertAmount(getExpenseAmount(b), b.currency));
     } else if (sortBy === 'oldest') {
       sorted.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     } else {
@@ -162,10 +152,9 @@ const MyExpenses = () => {
     return sorted;
   }, [rawExpenses, searchQuery, filters, sortBy]);
 
-  const activeCurrency = useMemo(() => filteredData.find((expense) => expense.currency)?.currency || 'USD', [filteredData]);
   const visibleAmount = useMemo(
-    () => filteredData.reduce((sum, expense) => sum + getExpenseAmount(expense), 0),
-    [filteredData],
+    () => filteredData.reduce((sum, expense) => sum + convertAmount(getExpenseAmount(expense), expense.currency), 0),
+    [filteredData, convertAmount],
   );
 
   useEffect(() => {
@@ -244,7 +233,7 @@ const MyExpenses = () => {
             Showing {filteredData.length} of {rawExpenses.length} expenses
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Visible amount: <span className="font-semibold text-slate-800">{formatCurrencyValue(visibleAmount, activeCurrency)}</span>
+            Visible amount: <span className="font-semibold text-slate-800">{formatAmount(visibleAmount, selectedCurrency)}</span>
           </p>
         </div>
       </section>
@@ -423,7 +412,7 @@ const MyExpenses = () => {
                 <div className="col-span-2">
                   <p className="mb-1 text-xs uppercase tracking-widest text-slate-500">Amount</p>
                   <p className="text-3xl font-bold tracking-tight text-slate-900">
-                    {formatCurrencyValue(selectedExpense.amount, selectedExpense.currency)}
+                    {formatAmount(selectedExpense.amount, selectedExpense.currency)}
                   </p>
                 </div>
 

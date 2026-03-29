@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -21,24 +22,10 @@ import notificationService from '../../services/notificationService';
 
 const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
 
-const formatCurrencyValue = (amount, currency = 'USD') => {
-  const numeric = Number(amount ?? 0);
-  const safeAmount = Number.isFinite(numeric) ? numeric : 0;
-
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-    }).format(safeAmount);
-  } catch {
-    return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-  }
-};
-
 const EmployeeDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { formatAmount } = useContext(CurrencyContext);
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -150,12 +137,12 @@ const EmployeeDashboard = () => {
             Personal Snapshot
           </p>
           <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
-            {formatCurrencyValue(insights.currentMonthAmount, userCurrency)} claimed this month
+            {formatAmount(insights.currentMonthAmount, userCurrency)} claimed this month
           </h2>
           <p className="mt-1 text-sm font-semibold text-slate-700">{monthDeltaLabel}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-              Avg claim {formatCurrencyValue(insights.averageClaimAmount, userCurrency)}
+              Avg claim {formatAmount(insights.averageClaimAmount, userCurrency)}
             </span>
             <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
               Last sync {stats.lastUpdatedAt ? new Date(stats.lastUpdatedAt).toLocaleTimeString() : 'just now'}
@@ -180,14 +167,14 @@ const EmployeeDashboard = () => {
         />
         <StatCard
           title="Reimbursed"
-          value={formatCurrencyValue(stats.approvedAmount, userCurrency)}
+          value={formatAmount(stats.approvedAmount, userCurrency)}
           valueColorClass="text-emerald-700"
           icon={<CheckCircle2 size={22} className="text-emerald-500" />}
           description="Approved payouts"
         />
         <StatCard
           title="To Be Reimbursed"
-          value={formatCurrencyValue(insights.pendingAmount, userCurrency)}
+          value={formatAmount(insights.pendingAmount, userCurrency)}
           valueColorClass="text-blue-700"
           icon={<Wallet size={22} className="text-blue-500" />}
           description="Still pending"
@@ -256,7 +243,7 @@ const EmployeeDashboard = () => {
                   <div key={item.name}>
                     <div className="mb-1 flex items-center justify-between text-sm">
                       <span className="font-medium text-slate-700">{item.name}</span>
-                      <span className="text-slate-600">{formatCurrencyValue(item.value, userCurrency)}</span>
+                      <span className="text-slate-600">{formatAmount(item.value, userCurrency)}</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                       <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${percentage}%` }} />

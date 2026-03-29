@@ -1,5 +1,8 @@
 import { pool } from "../config/db";
 
+const ADMIN_TOP_TIER = 0;
+const DEFAULT_MANAGER_TIER = 20;
+
 /**
  * Idempotent DDL so existing databases (that never ran migrate_003) get
  * hierarchy_tier + reporting_links before any controller queries them.
@@ -19,11 +22,10 @@ export async function ensureReportingHierarchySchema(): Promise<void> {
       CHECK (hierarchy_tier >= 0 AND hierarchy_tier <= 999)
     `);
 
+    await client.query(`UPDATE users SET hierarchy_tier = $1 WHERE role = 'admin'`, [ADMIN_TOP_TIER]);
     await client.query(
-      `UPDATE users SET hierarchy_tier = 100 WHERE role = 'admin' AND hierarchy_tier = 0`,
-    );
-    await client.query(
-      `UPDATE users SET hierarchy_tier = 20 WHERE role = 'manager' AND hierarchy_tier = 0`,
+      `UPDATE users SET hierarchy_tier = $1 WHERE role = 'manager' AND hierarchy_tier = 0`,
+      [DEFAULT_MANAGER_TIER],
     );
 
     await client.query(`

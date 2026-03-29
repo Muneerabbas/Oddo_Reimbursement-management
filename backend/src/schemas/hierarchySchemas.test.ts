@@ -18,10 +18,10 @@ describe("hierarchySchemas", () => {
     expect(() => createReportingLinkSchema.parse({ subordinateId: 1, supervisorId: -1 })).toThrow();
   });
 
-  it("updateHierarchyTierSchema enforces 0..999", () => {
-    expect(updateHierarchyTierSchema.parse({ hierarchyTier: 0 })).toEqual({ hierarchyTier: 0 });
+  it("updateHierarchyTierSchema enforces 1..999 for non-admin users", () => {
+    expect(updateHierarchyTierSchema.parse({ hierarchyTier: 1 })).toEqual({ hierarchyTier: 1 });
     expect(updateHierarchyTierSchema.parse({ hierarchyTier: 999 })).toEqual({ hierarchyTier: 999 });
-    expect(() => updateHierarchyTierSchema.parse({ hierarchyTier: -1 })).toThrow();
+    expect(() => updateHierarchyTierSchema.parse({ hierarchyTier: 0 })).toThrow();
     expect(() => updateHierarchyTierSchema.parse({ hierarchyTier: 1000 })).toThrow();
   });
 });

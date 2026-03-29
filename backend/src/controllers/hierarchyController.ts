@@ -4,6 +4,8 @@ import { pool } from "../config/db";
 import { createReportingLinkSchema, updateHierarchyTierSchema } from "../schemas/hierarchySchemas";
 import { buildSubordinateAdjacency, isUnderSupervisorTree } from "../utils/reportingTree";
 
+const ADMIN_TOP_TIER = 0;
+
 function sendZodError(res: Response, err: ZodError): void {
   const first = err.issues[0];
   res.status(400).json({
@@ -102,15 +104,10 @@ export async function createReportingLink(req: Request, res: Response): Promise<
       res.status(400).json({ message: "Administrators cannot be subordinates in the reporting graph." });
       return;
     }
-    if (sup.role !== "manager" && sup.role !== "admin") {
-      res.status(400).json({ message: "Supervisors must be managers or administrators." });
-      return;
-    }
-
-    if (sup.hierarchy_tier <= sub.hierarchy_tier) {
+    if (sup.hierarchy_tier >= sub.hierarchy_tier) {
       res.status(400).json({
         message:
-          "Reporting flows bottom → top: the supervisor’s hierarchy tier must be greater than the subordinate’s. Adjust tiers in the side panel if needed.",
+          "Reporting flows bottom → top: the supervisor must be on a higher level, so their tier number must be lower than the subordinate’s. Adjust tiers in the side panel if needed.",
       });
       return;
     }
@@ -212,36 +209,36 @@ export async function updateUserHierarchyTier(req: Request, res: Response): Prom
     }
     const row = cur.rows[0];
     if (row.role === "admin") {
-      res.status(400).json({ message: "Administrator tier is fixed at the top level." });
+      res.status(400).json({ message: `Administrator tier is fixed at ${ADMIN_TOP_TIER}.` });
       return;
     }
 
-    const subs = await pool.query<{ max_t: number }>(
-      `SELECT MAX(u.hierarchy_tier)::int AS max_t
+    const subs = await pool.query<{ min_t: number }>(
+      `SELECT MIN(u.hierarchy_tier)::int AS min_t
        FROM reporting_links rl
        JOIN users u ON u.id = rl.subordinate_id AND u.company_id = rl.company_id
        WHERE rl.company_id = $1 AND rl.supervisor_id = $2`,
       [companyId, userId],
     );
-    const maxSubTier = subs.rows[0]?.max_t ?? null;
-    if (maxSubTier != null && tier <= maxSubTier) {
+    const minSubTier = subs.rows[0]?.min_t ?? null;
+    if (minSubTier != null && tier >= minSubTier) {
       res.status(400).json({
-        message: `Tier must stay above everyone who reports to this person (current max subordinate tier is ${maxSubTier}).`,
+        message: `Tier must stay above everyone who reports to this person, so it must remain lower than the nearest subordinate tier (${minSubTier}).`,
       });
       return;
     }
 
-    const sups = await pool.query<{ min_t: number }>(
-      `SELECT MIN(u.hierarchy_tier)::int AS min_t
+    const sups = await pool.query<{ max_t: number }>(
+      `SELECT MAX(u.hierarchy_tier)::int AS max_t
        FROM reporting_links rl
        JOIN users u ON u.id = rl.supervisor_id AND u.company_id = rl.company_id
        WHERE rl.company_id = $1 AND rl.subordinate_id = $2`,
       [companyId, userId],
     );
-    const minSupTier = sups.rows[0]?.min_t ?? null;
-    if (minSupTier != null && tier >= minSupTier) {
+    const maxSupTier = sups.rows[0]?.max_t ?? null;
+    if (maxSupTier != null && tier <= maxSupTier) {
       res.status(400).json({
-        message: `Tier must stay below every supervisor (current min supervisor tier is ${minSupTier}).`,
+        message: `Tier must stay below every supervisor, so it must remain higher than the farthest supervisor tier (${maxSupTier}).`,
       });
       return;
     }

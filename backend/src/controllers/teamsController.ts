@@ -21,6 +21,58 @@ function sendZodError(res: Response, err: ZodError): void {
   });
 }
 
+async function assertManagerAboveTier(
+  companyId: number,
+  managerId: number,
+  subordinateTier: number,
+): Promise<string | null> {
+  const mgr = await pool.query<{ hierarchy_tier: number }>(
+    `SELECT hierarchy_tier FROM users WHERE id = $1 AND company_id = $2 AND role = 'manager'`,
+    [managerId, companyId],
+  );
+  if (mgr.rows.length === 0) {
+    return "Manager must be an existing manager in your company.";
+  }
+  if (mgr.rows[0].hierarchy_tier >= subordinateTier) {
+    return "Line manager must be on a higher level than the member, so the manager tier must be lower.";
+  }
+  return null;
+}
+
+async function assertRoleTierKeepsLinksValid(
+  companyId: number,
+  roleId: number,
+  nextTier: number,
+): Promise<string | null> {
+  const subordinateConflict = await pool.query<{ full_name: string; hierarchy_tier: number }>(
+    `SELECT u.full_name, sup.hierarchy_tier
+     FROM users u
+     JOIN reporting_links rl ON rl.company_id = u.company_id AND rl.subordinate_id = u.id
+     JOIN users sup ON sup.id = rl.supervisor_id AND sup.company_id = rl.company_id
+     WHERE u.company_id = $1 AND u.company_role_id = $2 AND sup.hierarchy_tier >= $3
+     LIMIT 1`,
+    [companyId, roleId, nextTier],
+  );
+  if (subordinateConflict.rows.length > 0) {
+    return "This tier would place at least one role member above or level with their current supervisor.";
+  }
+
+  const supervisorConflict = await pool.query<{ full_name: string; hierarchy_tier: number }>(
+    `SELECT u.full_name, sub.hierarchy_tier
+     FROM users u
+     JOIN reporting_links rl ON rl.company_id = u.company_id AND rl.supervisor_id = u.id
+     JOIN users sub ON sub.id = rl.subordinate_id AND sub.company_id = rl.company_id
+     WHERE u.company_id = $1 AND u.company_role_id = $2 AND sub.hierarchy_tier <= $3
+     LIMIT 1`,
+    [companyId, roleId, nextTier],
+  );
+  if (supervisorConflict.rows.length > 0) {
+    return "This tier would place at least one role member below or level with a direct report they supervise.";
+  }
+
+  return null;
+}
+
 function mapRoleRow(row: {
   id: number;
   name: string;
@@ -63,7 +115,7 @@ export async function createRole(req: Request, res: Response): Promise<void> {
       `INSERT INTO company_roles (company_id, name, base_role, permissions, hierarchy_tier)
        VALUES ($1, $2, $3, $4::jsonb, $5)
        RETURNING id, name, base_role, permissions, created_at, hierarchy_tier`,
-      [companyId, body.name.trim(), body.baseRole, JSON.stringify(perms), body.hierarchyTier ?? 0],
+      [companyId, body.name.trim(), body.baseRole, JSON.stringify(perms), body.hierarchyTier ?? 10],
     );
     res.status(201).json({ role: mapRoleRow(r.rows[0]) });
   } catch (e) {
@@ -112,6 +164,13 @@ export async function updateRole(req: Request, res: Response): Promise<void> {
         ? { ...row.permissions, ...body.permissions }
         : row.permissions;
     const nextHierarchyTier = body.hierarchyTier ?? row.hierarchy_tier;
+    if (nextHierarchyTier !== row.hierarchy_tier) {
+      const tierError = await assertRoleTierKeepsLinksValid(companyId, id, nextHierarchyTier);
+      if (tierError) {
+        res.status(400).json({ message: tierError });
+        return;
+      }
+    }
 
     const r = await pool.query(
       `UPDATE company_roles
@@ -249,16 +308,13 @@ export async function createMember(req: Request, res: Response): Promise<void> {
     const initialTier = roleRes.rows[0].hierarchy_tier;
 
     if (body.managerId != null) {
-      const mgr = await pool.query(
-        `SELECT id FROM users WHERE id = $1 AND company_id = $2 AND role = 'manager'`,
-        [body.managerId, companyId],
-      );
-      if (mgr.rows.length === 0) {
-        res.status(400).json({ message: "Manager must be an existing manager in your company." });
-        return;
-      }
       if (baseRole === "manager" && body.managerId) {
         res.status(400).json({ message: "Managers are not assigned a line manager here." });
+        return;
+      }
+      const managerTierError = await assertManagerAboveTier(companyId, body.managerId, initialTier);
+      if (managerTierError) {
+        res.status(400).json({ message: managerTierError });
         return;
       }
     }
@@ -395,12 +451,13 @@ export async function updateMember(req: Request, res: Response): Promise<void> {
     }
 
     if (finalRole === "employee" && finalManagerId != null) {
-      const mgr = await pool.query(
-        `SELECT id FROM users WHERE id = $1 AND company_id = $2 AND role = 'manager'`,
-        [finalManagerId, companyId],
-      );
-      if (mgr.rows.length === 0) {
-        res.status(400).json({ message: "Invalid manager." });
+      const effectiveTier = nextTier ?? (await pool.query<{ hierarchy_tier: number }>(
+        `SELECT hierarchy_tier FROM users WHERE id = $1 AND company_id = $2`,
+        [memberId, companyId],
+      )).rows[0]?.hierarchy_tier;
+      const managerTierError = await assertManagerAboveTier(companyId, finalManagerId, effectiveTier);
+      if (managerTierError) {
+        res.status(400).json({ message: managerTierError });
         return;
       }
     }

@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 import {
   ArrowRight,
   CheckCircle2,
@@ -19,24 +20,11 @@ import dashboardService from '../../services/dashboardService';
 import expenseService from '../../services/expenseService';
 import notificationService from '../../services/notificationService';
 
-const formatCurrencyValue = (amount, currency = 'USD') => {
-  const numeric = Number(amount ?? 0);
-  const safeAmount = Number.isFinite(numeric) ? numeric : 0;
-
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-    }).format(safeAmount);
-  } catch {
-    return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-  }
-};
 
 const DashboardHome = () => {
   const { role, user } = useAuth();
   const navigate = useNavigate();
+  const { selectedCurrency, formatAmount } = useContext(CurrencyContext);
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -73,8 +61,8 @@ const DashboardHome = () => {
   const isEmployee = normalizedRole === 'employee';
   const isManagerLike = !isAdmin && !isEmployee;
   const firstName = user?.name?.split(' ')?.[0] || 'there';
-  const currency = user?.company?.defaultCurrency || 'USD';
   const historyPath = isManagerLike ? '/logs' : '/expenses';
+  const dataCurrency = user?.company?.defaultCurrency || 'USD';
 
   const insights = stats?.insights || {};
   const categoryBreakdown = stats?.categoryBreakdown || [];
@@ -107,10 +95,10 @@ const DashboardHome = () => {
       },
       {
         label: 'Approved Value',
-        value: formatCurrencyValue(stats.approvedAmount, currency),
+        value: formatAmount(stats.approvedAmount, dataCurrency),
       },
     ];
-  }, [currency, stats]);
+  }, [dataCurrency, stats, formatAmount]);
 
   const handleViewDocument = async (expense) => {
     try {
@@ -159,12 +147,12 @@ const DashboardHome = () => {
               Live Dashboard
             </p>
             <h2 className="max-w-2xl text-2xl font-bold tracking-tight text-slate-900">
-              Spend this month: {formatCurrencyValue(insights.currentMonthAmount, currency)}
+              Spend this month: {formatAmount(insights.currentMonthAmount, dataCurrency)}
             </h2>
             <p className={`text-sm font-semibold ${monthDeltaTone}`}>{monthDeltaLabel}</p>
             {topCategory && (
               <p className="text-sm text-slate-600">
-                Top category: <span className="font-semibold text-slate-800">{topCategory.name}</span> ({formatCurrencyValue(topCategory.value, currency)})
+                Top category: <span className="font-semibold text-slate-800">{topCategory.name}</span> ({formatAmount(topCategory.value, dataCurrency)})
               </p>
             )}
           </div>
@@ -223,7 +211,7 @@ const DashboardHome = () => {
         />
         <StatCard
           title="Approved Amount"
-          value={formatCurrencyValue(stats.approvedAmount, currency)}
+          value={formatAmount(stats.approvedAmount, dataCurrency)}
           valueColorClass="text-emerald-700"
           icon={<CheckCircle2 size={22} className="text-emerald-500" />}
           description="Approved or paid"
@@ -263,7 +251,7 @@ const DashboardHome = () => {
                     <div className="mb-1 flex items-center justify-between text-sm">
                       <span className="font-medium text-slate-700">{category.name}</span>
                       <span className="font-semibold text-slate-900">
-                        {formatCurrencyValue(category.value, currency)}
+                        {formatAmount(category.value, dataCurrency)}
                       </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
@@ -284,10 +272,10 @@ const DashboardHome = () => {
           <div className="panel-card space-y-3 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-600">Insights</h3>
             <p className="text-sm text-slate-600">
-              Average claim: <span className="font-semibold text-slate-900">{formatCurrencyValue(insights.averageClaimAmount, currency)}</span>
+              Average claim: <span className="font-semibold text-slate-900">{formatAmount(insights.averageClaimAmount, dataCurrency)}</span>
             </p>
             <p className="text-sm text-slate-600">
-              Total tracked spend: <span className="font-semibold text-slate-900">{formatCurrencyValue(insights.totalAmount, currency)}</span>
+              Total tracked spend: <span className="font-semibold text-slate-900">{formatAmount(insights.totalAmount, dataCurrency)}</span>
             </p>
             <p className="text-xs text-slate-500">
               Updated {stats.lastUpdatedAt ? new Date(stats.lastUpdatedAt).toLocaleString() : 'just now'}

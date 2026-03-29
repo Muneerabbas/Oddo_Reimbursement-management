@@ -4,9 +4,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS hierarchy_tier INTEGER NOT NULL DEFAU
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_hierarchy_tier_check;
 ALTER TABLE users ADD CONSTRAINT users_hierarchy_tier_check CHECK (hierarchy_tier >= 0 AND hierarchy_tier <= 999);
 
-UPDATE users SET hierarchy_tier = 100 WHERE role = 'admin';
+UPDATE users SET hierarchy_tier = 0 WHERE role = 'admin';
 UPDATE users SET hierarchy_tier = 20 WHERE role = 'manager';
-UPDATE users SET hierarchy_tier = 0 WHERE role = 'employee';
+UPDATE users SET hierarchy_tier = 50 WHERE role = 'employee';
 
 CREATE TABLE IF NOT EXISTS reporting_links (
   id SERIAL PRIMARY KEY,
