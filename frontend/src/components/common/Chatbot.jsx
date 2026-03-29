@@ -49,6 +49,7 @@ const Chatbot = () => {
             suggestedActions: response.suggestedActions || [],
             escalate: response.escalate,
             escalateReason: response.escalateReason,
+            mapped: response.mapped || null,
           },
         }]);
       }
@@ -118,6 +119,39 @@ const Chatbot = () => {
                   }`}
                 >
                   {msg.text}
+                  {msg.sender === 'bot' && msg.meta?.mapped && (
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-3 text-xs text-slate-700">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="font-semibold uppercase tracking-wide text-slate-600">Mapped Response</span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                          Detailed
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="rounded-lg border border-slate-200 bg-white p-2">
+                          <p className="text-[10px] uppercase tracking-wide text-slate-500">Total Accepted Expense</p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">₹{Number(msg.meta.mapped.acceptedTotal || 0).toLocaleString('en-IN')}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-2">
+                            <p className="text-[10px] uppercase tracking-wide text-amber-700">Pending</p>
+                            <p className="mt-1 text-sm font-bold text-amber-900">{msg.meta.mapped.pendingApprovals}</p>
+                          </div>
+                          <div className="rounded-lg border border-rose-200 bg-rose-50 p-2">
+                            <p className="text-[10px] uppercase tracking-wide text-rose-700">Rejected</p>
+                            <p className="mt-1 text-sm font-bold text-rose-900">{msg.meta.mapped.rejectedApprovals}</p>
+                          </div>
+                        </div>
+                        {msg.meta.mapped.extractedEmail && (
+                          <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-2">
+                            <p className="text-[10px] uppercase tracking-wide text-cyan-700">Extracted Email</p>
+                            <p className="mt-1 break-all text-xs font-semibold text-cyan-900">{msg.meta.mapped.extractedEmail}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {msg.sender === 'bot' && msg.meta && (
                     <div className="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-500 space-y-1">
                       {typeof msg.meta.confidence === 'number' && (

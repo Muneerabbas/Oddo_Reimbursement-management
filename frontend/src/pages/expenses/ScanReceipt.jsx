@@ -25,6 +25,7 @@ const ScanReceipt = () => {
   const [receiptFile, setReceiptFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAutoSubmitting, setIsAutoSubmitting] = useState(false);
   const [extractedData, setExtractedData] = useState(DEFAULT_EXTRACTED_DATA);
 
   useEffect(() => {
@@ -84,20 +85,41 @@ const ScanReceipt = () => {
 
     try {
       const extracted = await expenseService.simulateOCRScan(receiptFile);
-      setExtractedData({
+      const normalized = {
         amount: extracted.amount || '',
         date: extracted.date || DEFAULT_EXTRACTED_DATA.date,
-        category: extracted.category || '',
-        description: extracted.description || '',
+        category: extracted.category || 'Other',
+        description: extracted.description || 'Auto-submitted from scanned receipt',
         currency: extracted.currency || 'USD',
-      });
+      };
+      setExtractedData(normalized);
       setWorkflowStep('complete');
-      notificationService.success('Receipt processed and fields auto-filled.', { id: toastId });
+
+      const numericAmount = Number(normalized.amount);
+      if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        notificationService.error('Receipt scanned but amount is invalid. Please edit and submit manually.', { id: toastId });
+        return;
+      }
+
+      setIsAutoSubmitting(true);
+      notificationService.loading('Auto-submitting expense...', { id: toastId });
+      await expenseService.submitExpense({
+        date: normalized.date,
+        category: normalized.category,
+        amount: numericAmount,
+        currency: normalized.currency,
+        description: normalized.description,
+        file: receiptFile,
+      });
+
+      notificationService.success('Receipt scanned and expense submitted successfully.', { id: toastId });
+      navigate('/expenses', { replace: true });
     } catch {
       setWorkflowStep('upload');
       notificationService.error('OCR processing failed. Please try again.', { id: toastId });
     } finally {
       setIsProcessing(false);
+      setIsAutoSubmitting(false);
     }
   };
 
@@ -193,11 +215,11 @@ const ScanReceipt = () => {
                   <button
                     type="button"
                     onClick={handleScanReceipt}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isAutoSubmitting}
                     className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <ScanLine size={16} />}
-                    {isProcessing ? 'Processing...' : 'Start Scan'}
+                    {(isProcessing || isAutoSubmitting) ? <Loader2 size={16} className="animate-spin" /> : <ScanLine size={16} />}
+                    {isAutoSubmitting ? 'Submitting...' : isProcessing ? 'Processing...' : 'Start Scan'}
                   </button>
                 </div>
               </div>

@@ -1,4 +1,3 @@
-import apiClient from './apiClient';
 import { getStoredUser } from '../utils/authStorage';
 
 /**
@@ -11,10 +10,8 @@ const chatbotService = {
     const acceptedTotal = randomInt(500, 50000);
     const pendingApprovals = randomInt(0, 9);
     const rejectedApprovals = randomInt(0, 25);
-    const fixedReply =
-      `this is the total accepted expense of the user: ${acceptedTotal}\n` +
-      `pending approvals: ${pendingApprovals}\n` +
-      `rejected approvals: ${rejectedApprovals}`;
+    const extractedEmail = String(message || '').match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0] || null;
+    const fixedReply = 'Mapped expense summary generated successfully.';
 
     try {
       const user = getStoredUser();
@@ -30,6 +27,13 @@ const chatbotService = {
         suggestedActions: [],
         escalate: false,
         escalateReason: null,
+        mapped: {
+          acceptedTotal,
+          pendingApprovals,
+          rejectedApprovals,
+          extractedEmail,
+          generatedAt: new Date().toISOString(),
+        },
       };
     } catch (error) {
       console.warn('Support agent API failed, falling back to frontend mock.', error);
@@ -56,6 +60,13 @@ const chatbotService = {
         suggestedActions: [],
         escalate: true,
         escalateReason: 'Backend support agent unavailable; using fallback mode.',
+        mapped: {
+          acceptedTotal,
+          pendingApprovals,
+          rejectedApprovals,
+          extractedEmail,
+          generatedAt: new Date().toISOString(),
+        },
       };
     }
   },
