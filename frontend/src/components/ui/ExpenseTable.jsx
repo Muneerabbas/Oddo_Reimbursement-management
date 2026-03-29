@@ -5,6 +5,7 @@ import StatusBadge from './StatusBadge';
 const ExpenseTable = ({ 
   data, 
   onRowClick, 
+  onViewDocument,
   currentPage, 
   rowsPerPage, 
   onPageChange 
@@ -28,6 +29,7 @@ const ExpenseTable = ({
               <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Category</th>
               <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden md:table-cell">Description</th>
               <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Amount</th>
+              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Document</th>
               <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
@@ -57,6 +59,18 @@ const ExpenseTable = ({
                     {typeof expense.amount === 'number' ? expense.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }) : expense.amount}
                     {expense.currency && expense.currency !== 'USD' ? ` ${expense.currency}` : ''}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onViewDocument(expense);
+                      }}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      View Document
+                    </button>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge status={expense.status} />
                   </td>
@@ -64,7 +78,7 @@ const ExpenseTable = ({
               ))
             ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-slate-500">
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-500">
                     <FileText size={48} className="mx-auto text-slate-300 mb-3" />
                     <span className="block font-medium text-slate-700 mb-1">No reimbursement records found</span>
                     <span className="text-sm">Try adjusting your active display filters.</span>

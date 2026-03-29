@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { createExpenseSubmissionSchema } from "../schemas/expenseSchemas";
 import {
   createExpenseSubmission,
+  getExpenseSubmissionDocument,
   listExpenseSubmissionsForUser,
 } from "../services/expenseSubmissionService";
 
@@ -75,5 +76,42 @@ export async function listExpenses(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error("listExpenses", error);
     res.status(500).json({ message: "Could not load expenses." });
+  }
+}
+
+export async function viewExpenseDocument(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.auth) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
+    }
+
+    const rawExpenseId = Array.isArray(req.params.expenseId)
+      ? req.params.expenseId[0]
+      : req.params.expenseId;
+    const numericExpenseId = Number(rawExpenseId?.replace(/^EXP-/i, ""));
+
+    if (!Number.isFinite(numericExpenseId)) {
+      res.status(400).json({ message: "Invalid expense id." });
+      return;
+    }
+
+    const document = await getExpenseSubmissionDocument(
+      req.auth.companyId,
+      req.auth.userId,
+      numericExpenseId,
+    );
+
+    if (!document) {
+      res.status(404).json({ message: "Document not found." });
+      return;
+    }
+
+    res.setHeader("Content-Type", document.receipt_mime_type);
+    res.setHeader("Content-Disposition", `inline; filename="${document.receipt_file_name}"`);
+    res.send(document.receipt_data);
+  } catch (error) {
+    console.error("viewExpenseDocument", error);
+    res.status(500).json({ message: "Could not load document." });
   }
 }

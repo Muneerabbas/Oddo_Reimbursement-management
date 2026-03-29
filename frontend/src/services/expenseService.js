@@ -20,6 +20,27 @@ const expenseService = {
     });
   },
 
+  viewExpenseDocument: async (expenseId) => {
+    return loadingService.withGlobalLoading(async () => {
+      const response = await apiClient.get(`/expenses/${expenseId}/document`, {
+        responseType: 'blob',
+      });
+
+      const mimeType = response.headers['content-type'] || 'application/octet-stream';
+      const fileBlob = new Blob([response.data], { type: mimeType });
+      const fileUrl = URL.createObjectURL(fileBlob);
+      const newWindow = window.open(fileUrl, '_blank', 'noopener,noreferrer');
+
+      if (!newWindow) {
+        URL.revokeObjectURL(fileUrl);
+        throw new Error('Unable to open the document. Please allow pop-ups and try again.');
+      }
+
+      setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
+      return true;
+    });
+  },
+
   /**
    * Submit a new expense record
    * @param {Object} formData

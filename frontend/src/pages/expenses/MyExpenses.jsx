@@ -7,6 +7,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import PageHeader from '../../components/ui/PageHeader';
 import EmptyState from '../../components/feedback/EmptyState';
 import { TableSkeleton } from '../../components/feedback/Skeleton';
+import notificationService from '../../services/notificationService';
 
 const MyExpenses = () => {
   const navigate = useNavigate();
@@ -89,6 +90,15 @@ const MyExpenses = () => {
        document.body.style.overflow = 'auto';
     }
   }, [selectedExpense]);
+
+  const handleViewDocument = async (expense) => {
+    try {
+      await expenseService.viewExpenseDocument(expense.id);
+    } catch (err) {
+      console.error(err);
+      notificationService.error(err.message || 'Unable to open the uploaded document.');
+    }
+  };
 
 
   return (
@@ -184,6 +194,7 @@ const MyExpenses = () => {
            <ExpenseTable
              data={filteredData}
              onRowClick={(expense) => setSelectedExpense(expense)}
+             onViewDocument={handleViewDocument}
              currentPage={currentPage}
              rowsPerPage={rowsPerPage}
              onPageChange={setCurrentPage}

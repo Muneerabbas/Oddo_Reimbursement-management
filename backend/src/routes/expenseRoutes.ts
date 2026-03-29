@@ -1,17 +1,16 @@
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
-import { createExpense, listExpenses } from "../controllers/expenseController";
+import { createExpense, listExpenses, viewExpenseDocument } from "../controllers/expenseController";
 import { env } from "../config/env";
 import { requireAuth } from "../middleware/authMiddleware";
 import { uploadExpenseReceipt } from "../middleware/expenseUpload";
 
 const router = Router();
 
-router.use(requireAuth);
+router.get("/expenses", requireAuth, listExpenses);
+router.get("/expenses/:expenseId/document", requireAuth, viewExpenseDocument);
 
-router.get("/expenses", listExpenses);
-
-router.post("/expenses", (req: Request, res: Response) => {
+router.post("/expenses", requireAuth, (req: Request, res: Response) => {
   uploadExpenseReceipt(req, res, (error) => {
     if (error instanceof multer.MulterError) {
       if (error.code === "LIMIT_FILE_SIZE") {

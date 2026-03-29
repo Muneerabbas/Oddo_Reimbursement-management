@@ -24,6 +24,13 @@ type ExpenseSubmissionRow = {
   created_at: string;
 };
 
+type ExpenseDocumentRow = {
+  id: number;
+  receipt_file_name: string;
+  receipt_mime_type: string;
+  receipt_data: Buffer;
+};
+
 let ensureExpenseSubmissionsTablePromise: Promise<void> | null = null;
 
 const ensureExpenseSubmissionsTableExists = async (): Promise<void> => {
@@ -150,4 +157,27 @@ export const listExpenseSubmissionsForUser = async (companyId: number, employeeI
   );
 
   return result.rows.map(mapExpenseSubmissionRow);
+};
+
+export const getExpenseSubmissionDocument = async (
+  companyId: number,
+  employeeId: number,
+  expenseId: number,
+) => {
+  await ensureExpenseSubmissionsTableExists();
+
+  const result = await pool.query<ExpenseDocumentRow>(
+    `
+      SELECT
+        id,
+        receipt_file_name,
+        receipt_mime_type,
+        receipt_data
+      FROM expense_submissions
+      WHERE company_id = $1 AND employee_id = $2 AND id = $3
+    `,
+    [companyId, employeeId, expenseId],
+  );
+
+  return result.rows[0] ?? null;
 };
