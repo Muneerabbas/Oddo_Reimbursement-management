@@ -92,9 +92,11 @@ export async function extractExpenseFromReceipt(req: Request, res: Response): Pr
         amount: extracted.amount.value,
         currency: extracted.currency.value,
         date: extracted.date.value,
+        expenseType: extracted.expenseType.value,
         category: extracted.category.value,
         description: extracted.description.value,
         vendor: extracted.vendor.value,
+        expenseLines: extracted.expenseLines,
       },
     });
   } catch (error) {

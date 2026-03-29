@@ -23,8 +23,14 @@ type ExtractResult = {
   currency: FieldConfidence;
   date: FieldConfidence;
   vendor: FieldConfidence;
+  expenseType: FieldConfidence;
   category: FieldConfidence;
   description: FieldConfidence;
+  expenseLines: Array<{
+    label: string;
+    qty?: number | null;
+    amount?: number | null;
+  }>;
   confidence: number;
   flags: string[];
   rawTextSnippet: string;
@@ -35,10 +41,16 @@ type GeminiParsed = {
   currency?: string | null;
   date?: string | null;
   vendor?: string | null;
+  expenseType?: string | null;
   category?: string | null;
   description?: string | null;
+  expenseLines?: Array<{
+    label?: string | null;
+    qty?: number | string | null;
+    amount?: number | string | null;
+  }> | null;
   confidence?: number | null;
-  fieldConfidence?: Partial<Record<"amount" | "currency" | "date" | "vendor" | "category" | "description", number>>;
+  fieldConfidence?: Partial<Record<"amount" | "currency" | "date" | "vendor" | "expenseType" | "category" | "description", number>>;
   flags?: string[];
 };
 
@@ -56,12 +68,22 @@ const geminiParsedSchema = z.object({
       currency: z.number().min(0).max(1).optional(),
       date: z.number().min(0).max(1).optional(),
       vendor: z.number().min(0).max(1).optional(),
+      expenseType: z.number().min(0).max(1).optional(),
       category: z.number().min(0).max(1).optional(),
       description: z.number().min(0).max(1).optional(),
     })
     .partial()
     .optional(),
   flags: z.array(z.string()).optional(),
+  expenseLines: z
+    .array(
+      z.object({
+        label: z.string().nullable().optional(),
+        qty: z.union([z.number(), z.string()]).nullable().optional(),
+        amount: z.union([z.number(), z.string()]).nullable().optional(),
+      }),
+    )
+    .optional(),
 });
 
 const KNOWN_CATEGORIES = ["Travel", "Meals", "Supplies", "Software", "Hardware", "Other"] as const;
@@ -199,6 +221,41 @@ function inferVendorFromText(rawText: string): string | null {
   return firstUseful ? firstUseful.slice(0, 80) : null;
 }
 
+function inferExpenseLinesFromText(rawText: string): Array<{
+  label: string;
+  qty?: number | null;
+  amount?: number | null;
+}> {
+  const lines = rawText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const results: Array<{ label: string; qty?: number | null; amount?: number | null }> = [];
+  const moneyLike = /(\d{1,6}(?:,\d{3})*(?:\.\d{2}))/;
+
+  for (const line of lines) {
+    if (results.length >= 15) break;
+    if (/^(subtotal|total|tax|visa|approval|ref|trans|items sold|change due)/i.test(line)) {
+      continue;
+    }
+    if (!/[a-z]/i.test(line)) continue;
+
+    const amountMatch = line.match(moneyLike);
+    const amount = amountMatch ? normalizeAmount(amountMatch[1]) : null;
+    const label = line.replace(moneyLike, "").replace(/\s{2,}/g, " ").trim();
+    if (!label || label.length < 2) continue;
+    if (amount == null && label.length < 5) continue;
+
+    results.push({
+      label: label.slice(0, 120),
+      amount,
+    });
+  }
+
+  return results;
+}
+
 async function extractRawTextViaOcrSpace(fileName: string, fileBuffer: Buffer): Promise<string> {
   if (!env.ocrSpaceApiKey) {
     throw new Error("OCR_SPACE_API_KEY is not configured.");
@@ -287,8 +344,9 @@ async function parseAndValidateWithGemini(rawText: string): Promise<GeminiParsed
     "- Add confidence score (0–1)",
     "- Flag suspicious or unclear data",
     "Return JSON only with keys:",
-    "amount, currency, date, vendor, category, description, confidence, fieldConfidence, flags",
+    "amount, currency, date, vendor, expenseType, category, description, expenseLines, confidence, fieldConfidence, flags",
     "fieldConfidence should include each field between 0 and 1.",
+    "expenseLines should be an array of objects {label, qty, amount}.",
     "Receipt text:",
     rawText,
   ].join("\n");
@@ -397,6 +455,7 @@ export async function extractExpenseDataWithAi(input: ExtractInput): Promise<Ext
   const date = normalizeDate(ai?.date) || inferDateFromText(rawText) || new Date().toISOString().slice(0, 10);
   const vendor = (ai?.vendor || "").trim() || inferVendorFromText(rawText);
   const category = normalizeCategory(ai?.category) || inferCategoryFromText(rawText);
+  const expenseType = (ai?.expenseType || "").trim() || category;
   const description =
     (ai?.description || "").trim() ||
     (vendor ? `Expense at ${vendor}` : `Receipt-based expense (${category})`);
@@ -441,6 +500,22 @@ export async function extractExpenseDataWithAi(input: ExtractInput): Promise<Ext
 
   const fieldConfidence = ai?.fieldConfidence || {};
   const globalConfidence = clamp01(ai?.confidence ?? (flags.has("ai_service_unavailable") ? 0.6 : 0.75));
+  const aiLines = Array.isArray(ai?.expenseLines)
+    ? ai.expenseLines
+        .map((l) => ({
+          label: (l?.label || "").trim(),
+          qty:
+            l?.qty == null
+              ? null
+              : typeof l.qty === "number"
+                ? l.qty
+                : Number(String(l.qty).replace(/[^\d.]/g, "")),
+          amount: normalizeAmount(l?.amount as string | number | null | undefined),
+        }))
+        .filter((l) => l.label)
+    : [];
+  const fallbackLines = inferExpenseLinesFromText(rawText);
+  const expenseLines = (aiLines.length > 0 ? aiLines : fallbackLines).slice(0, 15);
 
   return {
     amount: {
@@ -463,6 +538,11 @@ export async function extractExpenseDataWithAi(input: ExtractInput): Promise<Ext
       confidence: clamp01(fieldConfidence.vendor ?? (vendor ? globalConfidence : 0.4)),
       source: vendor ? "ocr" : "ai_inferred",
     },
+    expenseType: {
+      value: expenseType,
+      confidence: clamp01(fieldConfidence.expenseType ?? (ai?.expenseType ? globalConfidence : 0.65)),
+      source: ai?.expenseType ? "ocr" : "ai_inferred",
+    },
     category: {
       value: category,
       confidence: clamp01(fieldConfidence.category ?? (ai?.category ? globalConfidence : 0.65)),
@@ -473,6 +553,7 @@ export async function extractExpenseDataWithAi(input: ExtractInput): Promise<Ext
       confidence: clamp01(fieldConfidence.description ?? (ai?.description ? globalConfidence : 0.7)),
       source: ai?.description ? "ocr" : "ai_inferred",
     },
+    expenseLines,
     confidence: globalConfidence,
     flags: Array.from(flags),
     rawTextSnippet: rawText.slice(0, 500),

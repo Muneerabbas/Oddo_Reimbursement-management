@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, CheckCircle, XCircle, Info, Calculator } from 'lucide-react';
-
-const fallbackRates = { USD: 1.00, EUR: 1.09, GBP: 1.27, INR: 0.012, CAD: 0.74 };
+import { convertCurrencyAmount } from '../../services/currencyService';
 
 const ApprovalModal = ({ 
    request, 
@@ -10,15 +9,28 @@ const ApprovalModal = ({
    isProcessing 
 }) => {
   const [comment, setComment] = useState('');
+  const [estimatedConversion, setEstimatedConversion] = useState(null);
 
-  const estimatedConversion = useMemo(() => {
-    if (!request?.amount || request?.currency === 'USD') {
-      return null;
-    }
-
-    const rate = fallbackRates[request.currency] || 1;
-    const mapped = (parseFloat(request.amount) * rate).toFixed(2);
-    return `$${mapped} USD`;
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      if (!request?.amount || !request?.currency || request.currency === 'USD') {
+        setEstimatedConversion(null);
+        return;
+      }
+      try {
+        const result = await convertCurrencyAmount(request.amount, request.currency, 'USD');
+        if (!active || !result) return;
+        setEstimatedConversion(`$${result.convertedAmount.toFixed(2)} USD`);
+      } catch {
+        if (!active) return;
+        setEstimatedConversion(null);
+      }
+    };
+    void run();
+    return () => {
+      active = false;
+    };
   }, [request]);
 
   // Trap scrolling 
