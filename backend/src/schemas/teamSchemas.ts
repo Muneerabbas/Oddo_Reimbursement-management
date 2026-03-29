@@ -17,11 +17,13 @@ export const createCompanyRoleSchema = z.object({
   name: z.string().trim().min(1, "Role name is required").max(100),
   baseRole: z.enum(["employee", "manager"]),
   permissions: permissionsPartial,
+  hierarchyTier: z.coerce.number().int().min(0).max(999).optional(),
 });
 
 export const updateCompanyRoleSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   permissions: permissionsPartial,
+  hierarchyTier: z.coerce.number().int().min(0).max(999).optional(),
 });
 
 export const createTeamMemberSchema = z.object({

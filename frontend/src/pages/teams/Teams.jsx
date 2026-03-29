@@ -47,6 +47,7 @@ const Teams = () => {
     name: '',
     baseRole: 'employee',
     permissions: defaultPermissions('employee'),
+    hierarchyTier: 0,
   });
 
   const [memberForm, setMemberForm] = useState({
@@ -125,6 +126,7 @@ const Teams = () => {
       name: '',
       baseRole: 'employee',
       permissions: defaultPermissions('employee'),
+      hierarchyTier: 0,
     });
     setRoleModal('create');
   };
@@ -134,6 +136,7 @@ const Teams = () => {
       name: role.name,
       baseRole: role.baseRole,
       permissions: { ...defaultPermissions(role.baseRole), ...role.permissions },
+      hierarchyTier: role.hierarchyTier ?? 0,
     });
     setRoleModal({ mode: 'edit', id: role.id });
   };
@@ -157,12 +160,14 @@ const Teams = () => {
           name: roleForm.name.trim(),
           baseRole: roleForm.baseRole,
           permissions: roleForm.permissions,
+          hierarchyTier: Number(roleForm.hierarchyTier)
         });
         toast.success('Role created.');
       } else if (roleModal?.mode === 'edit') {
         await teamService.updateRole(roleModal.id, {
           name: roleForm.name.trim(),
           permissions: roleForm.permissions,
+          hierarchyTier: Number(roleForm.hierarchyTier)
         });
         toast.success('Role updated.');
       }
@@ -389,6 +394,7 @@ const Teams = () => {
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="px-4 py-3 font-medium">Role name</th>
+                  <th className="px-4 py-3 font-medium">Tier</th>
                   <th className="px-4 py-3 font-medium">Base access</th>
                   <th className="px-4 py-3 font-medium">Permissions</th>
                   <th className="px-4 py-3 font-medium w-28">Actions</th>
@@ -398,6 +404,7 @@ const Teams = () => {
                 {rolesOrdered.map((role) => (
                   <tr key={role.id} className="hover:bg-slate-50/80">
                     <td className="px-4 py-3 font-medium text-slate-900">{role.name}</td>
+                    <td className="px-4 py-3 text-slate-600 font-mono text-sm">{role.hierarchyTier}</td>
                     <td className="px-4 py-3 capitalize text-slate-600">{role.baseRole}</td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{permissionSummary(role)}</td>
                     <td className="px-4 py-3">
@@ -589,14 +596,28 @@ const Teams = () => {
               {roleModal === 'create' ? 'Create role' : 'Edit role'}
             </h3>
             <form onSubmit={submitRole} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Role name</label>
-                <input
-                  value={roleForm.name}
-                  onChange={(e) => setRoleForm((p) => ({ ...p, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                  required
-                />
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Role name</label>
+                  <input
+                    value={roleForm.name}
+                    onChange={(e) => setRoleForm((p) => ({ ...p, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                    required
+                  />
+                </div>
+                <div className="w-24">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tier</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="999"
+                    value={roleForm.hierarchyTier}
+                    onChange={(e) => setRoleForm((p) => ({ ...p, hierarchyTier: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                    required
+                  />
+                </div>
               </div>
               {roleModal === 'create' && (
                 <div>
