@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import {
+  CircleDollarSign,
+  GitBranch,
+  Plus,
+  Save,
+  Sparkles,
+  Trash2,
+  UsersRound,
+} from 'lucide-react';
 import StepBuilder from '../../components/admin/StepBuilder';
 import approvalRuleService from '../../services/approvalRuleService';
 import notificationService from '../../services/notificationService';
@@ -133,6 +141,20 @@ const ApprovalRules = () => {
     });
   }, [rules]);
 
+  const summary = useMemo(() => {
+    const totalRules = rules.length;
+    const totalSteps = rules.reduce((sum, rule) => sum + (Array.isArray(rule.steps) ? rule.steps.length : 0), 0);
+    const amountRules = rules.filter((rule) => rule.triggerMode === 'amount').length;
+    const employeeRules = rules.filter((rule) => rule.triggerMode === 'employee_specific').length;
+
+    return {
+      totalRules,
+      totalSteps,
+      amountRules,
+      employeeRules,
+    };
+  }, [rules]);
+
   const previewCards = useMemo(() => {
     const roleLabelMap = new Map(roleOptions.map((role) => [role.id, role.label || role.name]));
     const approverLabelMap = new Map(approverOptions.map((approver) => [approver.id, approver.label || approver.name]));
@@ -142,7 +164,7 @@ const ApprovalRules = () => {
       id: rule.id,
       title: `Rule ${index + 1}`,
       summary: rule.triggerMode === 'employee_specific'
-        ? `Assigned directly to: ${(rule.employeeIds || []).map((id) => memberLabelMap.get(id) || `Employee #${id}`).join(', ')}`
+        ? `Assigned to: ${(rule.employeeIds || []).map((id) => memberLabelMap.get(id) || `Employee #${id}`).join(', ')}`
         : `Applies up to Rs ${Number(rule.maxAmount) || 0}`,
       steps: rule.steps.map((step, stepIndex) => {
         if (step.mode === 'role_percentage') {
@@ -153,6 +175,7 @@ const ApprovalRules = () => {
         const labels = (step.approverIds || []).map((id) => approverLabelMap.get(id) || `Approver #${id}`);
         return `Step ${stepIndex + 1}: ${labels.join(', ')}`;
       }),
+      triggerMode: rule.triggerMode,
     }));
   }, [approverOptions, memberOptions, roleOptions, rules]);
 
@@ -214,7 +237,7 @@ const ApprovalRules = () => {
     <div className="page-stack">
       <PageHeader
         title="Expense Approval Rules"
-        description="Create multiple approval rules. A rule can be amount-based or assigned directly to selected employees, and each rule can contain many approval steps."
+        description="Design powerful, multi-step approval workflows by amount bands or employee-specific routing."
         actions={(
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -243,15 +266,77 @@ const ApprovalRules = () => {
         )}
       />
 
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(120deg,_#eef2ff_0%,_#f8fbff_45%,_#ffffff_100%)] p-5 shadow-sm">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary/10" />
+        <div className="pointer-events-none absolute -bottom-8 left-1/3 h-20 w-20 rounded-full bg-cyan-100/70" />
+        <div className="relative">
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+            <Sparkles size={13} />
+            Workflow Designer
+          </p>
+          <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-900">
+            Build clear routing paths for every reimbursement request.
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Mix amount-based and employee-targeted logic with flexible multi-step approval sequencing.
+          </p>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="panel-card p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Total Rules</p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{summary.totalRules}</p>
+        </div>
+        <div className="panel-card p-4">
+          <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
+            <GitBranch size={12} />
+            Total Steps
+          </p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{summary.totalSteps}</p>
+        </div>
+        <div className="panel-card p-4">
+          <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
+            <CircleDollarSign size={12} />
+            Amount Rules
+          </p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{summary.amountRules}</p>
+        </div>
+        <div className="panel-card p-4">
+          <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
+            <UsersRound size={12} />
+            Employee Rules
+          </p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{summary.employeeRules}</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           {rules.map((rule, index) => (
-            <div key={rule.id} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div
+              key={rule.id}
+              className="relative space-y-5 overflow-visible rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 rounded-t-2xl ${
+                rule.triggerMode === 'amount' ? 'bg-indigo-400/70' : 'bg-cyan-400/70'
+              }`}
+              />
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-800">Rule {index + 1}</h2>
-                  <p className="text-sm text-slate-500">
-                    Choose whether this rule is triggered by an amount band or assigned directly to specific employees.
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg font-semibold text-slate-800">Rule {index + 1}</h2>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      rule.triggerMode === 'amount'
+                        ? 'bg-indigo-100 text-indigo-700'
+                        : 'bg-cyan-100 text-cyan-700'
+                    }`}
+                    >
+                      {rule.triggerMode === 'amount' ? 'Amount trigger' : 'Employee trigger'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Configure trigger conditions and define the exact approval sequence for this rule.
                   </p>
                 </div>
 
@@ -259,79 +344,81 @@ const ApprovalRules = () => {
                   type="button"
                   onClick={() => removeRule(rule.id)}
                   disabled={rules.length <= 1}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash2 size={14} />
                   Remove Rule
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Rule applies by
-                  </label>
-                  <select
-                    value={rule.triggerMode}
-                    onChange={(event) => updateRule(rule.id, (current) => ({
-                      ...current,
-                      triggerMode: event.target.value,
-                      maxAmount: event.target.value === 'amount' ? current.maxAmount : '',
-                      employeeIds: event.target.value === 'employee_specific' ? current.employeeIds : [],
-                    }))}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="amount">Amount band</option>
-                    <option value="employee_specific">Specific employee</option>
-                  </select>
-                </div>
-
-                {rule.triggerMode === 'amount' ? (
-                  <div className="max-w-xs">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
+                  <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Max amount this rule can approve
+                      Rule applies by
                     </label>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">
-                        Rs
-                      </span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="0.01"
-                        value={rule.maxAmount}
-                        onChange={(event) => updateRule(rule.id, (current) => ({
-                          ...current,
-                          maxAmount: event.target.value,
-                        }))}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
-                        placeholder="1000"
+                    <select
+                      value={rule.triggerMode}
+                      onChange={(event) => updateRule(rule.id, (current) => ({
+                        ...current,
+                        triggerMode: event.target.value,
+                        maxAmount: event.target.value === 'amount' ? current.maxAmount : '',
+                        employeeIds: event.target.value === 'employee_specific' ? current.employeeIds : [],
+                      }))}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="amount">Amount band</option>
+                      <option value="employee_specific">Specific employee</option>
+                    </select>
+                  </div>
+
+                  {rule.triggerMode === 'amount' ? (
+                    <div className="max-w-xs">
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Max amount this rule can approve
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600">
+                          Rs
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          value={rule.maxAmount}
+                          onChange={(event) => updateRule(rule.id, (current) => ({
+                            ...current,
+                            maxAmount: event.target.value,
+                          }))}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
+                          placeholder="1000"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <MultiSelectDropdown
+                        label="Specific employees for this sequence"
+                        placeholder="Select employees"
+                        helperText="Choose employees who should always use this approval chain."
+                        options={memberOptions}
+                        selectedValues={rule.employeeIds || []}
+                        onToggle={(memberId) => updateRule(rule.id, (current) => {
+                          const currentIds = Array.isArray(current.employeeIds) ? current.employeeIds : [];
+                          const employeeIds = currentIds.includes(memberId)
+                            ? currentIds.filter((id) => id !== memberId)
+                            : [...currentIds, memberId];
+
+                          return {
+                            ...current,
+                            employeeIds,
+                          };
+                        })}
+                        emptyMessage="No employees available yet."
                       />
                     </div>
-                  </div>
-                ) : (
-                  <div>
-                    <MultiSelectDropdown
-                      label="Specific employees for this sequence"
-                      placeholder="Select employees"
-                      helperText="Choose the employees who should always use this approval chain."
-                      options={memberOptions}
-                      selectedValues={rule.employeeIds || []}
-                      onToggle={(memberId) => updateRule(rule.id, (current) => {
-                        const currentIds = Array.isArray(current.employeeIds) ? current.employeeIds : [];
-                        const employeeIds = currentIds.includes(memberId)
-                          ? currentIds.filter((id) => id !== memberId)
-                          : [...currentIds, memberId];
-
-                        return {
-                          ...current,
-                          employeeIds,
-                        };
-                      })}
-                      emptyMessage="No employees available yet."
-                    />
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               <StepBuilder
@@ -349,20 +436,32 @@ const ApprovalRules = () => {
           ))}
         </div>
 
-        <div className="h-fit rounded-2xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-800">Preview Summary</h2>
+        <div className="h-fit rounded-2xl border border-primary/20 bg-primary/5 p-5 shadow-sm xl:sticky xl:top-24">
+          <h2 className="text-lg font-semibold text-slate-800">Live Preview</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Admin-defined amount bands or person-specific approval chains that will run when a request is created.
+            See how each rule will read before you save.
           </p>
 
           <div className="mt-5 space-y-4 text-sm text-slate-700">
             {previewCards.map((card) => (
-              <div key={card.id} className="rounded-xl border border-primary/10 bg-white/70 p-4">
-                <p className="font-semibold text-slate-800">{card.title}</p>
+              <div key={card.id} className="rounded-xl border border-primary/10 bg-white/75 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-800">{card.title}</p>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    card.triggerMode === 'amount'
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'bg-cyan-100 text-cyan-700'
+                  }`}
+                  >
+                    {card.triggerMode === 'amount' ? 'Amount' : 'Employee'}
+                  </span>
+                </div>
                 <p className="mt-1 text-slate-600">{card.summary}</p>
-                <div className="mt-3 space-y-1">
+                <div className="mt-3 space-y-1.5">
                   {card.steps.map((line) => (
-                    <p key={line}>{line}</p>
+                    <p key={line} className="rounded-lg bg-slate-50 px-2 py-1 text-slate-700">
+                      {line}
+                    </p>
                   ))}
                 </div>
               </div>

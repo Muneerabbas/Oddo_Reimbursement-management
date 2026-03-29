@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { GitBranch, Percent, Plus, Trash2, UserRound } from 'lucide-react';
 import MultiSelectDropdown from '../ui/MultiSelectDropdown';
 
 const STEP_MODE_OPTIONS = [
@@ -69,10 +69,26 @@ const StepBuilder = ({
   return (
     <div className="space-y-4">
       {steps.map((step, index) => (
-        <div key={step.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+        <div
+          key={step.id}
+          className="relative space-y-4 overflow-visible rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+        >
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-semibold text-slate-800">Step {index + 1}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="inline-flex items-center gap-1 text-sm font-semibold text-slate-800">
+                  <GitBranch size={14} className="text-slate-500" />
+                  Step {index + 1}
+                </p>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  step.mode === 'role_percentage'
+                    ? 'bg-indigo-100 text-indigo-700'
+                    : 'bg-cyan-100 text-cyan-700'
+                }`}
+                >
+                  {step.mode === 'role_percentage' ? 'Role + %' : 'Named Approver'}
+                </span>
+              </div>
               <p className="text-xs text-slate-500">
                 Choose whether this step uses roles with a required percentage, or named approvers directly.
               </p>
@@ -121,7 +137,9 @@ const StepBuilder = ({
                       }))}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
                     />
-                    <span className="text-sm font-semibold text-slate-500">%</span>
+                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500">
+                      <Percent size={14} />
+                    </span>
                   </div>
                 </div>
 
@@ -148,6 +166,10 @@ const StepBuilder = ({
                   onToggle={(value) => toggleArrayValue(index, 'approverIds', value)}
                   emptyMessage="No employees available yet."
                 />
+                <p className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500">
+                  <UserRound size={12} />
+                  Selected approvers will receive this step directly.
+                </p>
               </div>
             )}
           </div>
