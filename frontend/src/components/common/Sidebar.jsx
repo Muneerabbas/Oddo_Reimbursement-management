@@ -6,6 +6,7 @@ import {
   PlusCircle, 
   List, 
   CheckSquare, 
+  SlidersHorizontal,
   Shield, 
   X 
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
   // Insert Admin specific panel conditionally
   if (role === 'admin') {
     navItems.push({ label: 'User Management', path: '/admin/users', icon: <Shield size={20} /> });
+    navItems.push({ label: 'Approval Rules', path: '/admin/approval-rules', icon: <SlidersHorizontal size={20} /> });
   }
 
   const handleMobileClose = () => {
