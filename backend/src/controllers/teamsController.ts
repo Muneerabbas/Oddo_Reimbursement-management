@@ -27,6 +27,7 @@ function mapRoleRow(row: {
   base_role: string;
   permissions: unknown;
   created_at: Date;
+  hierarchy_tier?: number;
 }) {
   return {
     id: row.id,
@@ -34,6 +35,7 @@ function mapRoleRow(row: {
     baseRole: row.base_role,
     permissions: row.permissions,
     createdAt: row.created_at,
+    hierarchyTier: row.hierarchy_tier ?? 0,
   };
 }
 
@@ -41,7 +43,7 @@ export async function listRoles(req: Request, res: Response): Promise<void> {
   try {
     const companyId = req.auth!.companyId;
     const r = await pool.query(
-      `SELECT id, name, base_role, permissions, created_at
+      `SELECT id, name, base_role, permissions, created_at, hierarchy_tier
        FROM company_roles WHERE company_id = $1 ORDER BY name ASC`,
       [companyId],
     );
@@ -58,10 +60,10 @@ export async function createRole(req: Request, res: Response): Promise<void> {
     const companyId = req.auth!.companyId;
     const perms = permissionsFromInput(body.baseRole, body.permissions ?? undefined);
     const r = await pool.query(
-      `INSERT INTO company_roles (company_id, name, base_role, permissions)
-       VALUES ($1, $2, $3, $4::jsonb)
-       RETURNING id, name, base_role, permissions, created_at`,
-      [companyId, body.name.trim(), body.baseRole, JSON.stringify(perms)],
+      `INSERT INTO company_roles (company_id, name, base_role, permissions, hierarchy_tier)
+       VALUES ($1, $2, $3, $4::jsonb, $5)
+       RETURNING id, name, base_role, permissions, created_at, hierarchy_tier`,
+      [companyId, body.name.trim(), body.baseRole, JSON.stringify(perms), body.hierarchyTier ?? 0],
     );
     res.status(201).json({ role: mapRoleRow(r.rows[0]) });
   } catch (e) {
@@ -93,8 +95,9 @@ export async function updateRole(req: Request, res: Response): Promise<void> {
       id: number;
       base_role: string;
       permissions: RolePermissions;
+      hierarchy_tier: number;
     }>(
-      `SELECT id, base_role, permissions FROM company_roles WHERE id = $1 AND company_id = $2`,
+      `SELECT id, base_role, permissions, hierarchy_tier FROM company_roles WHERE id = $1 AND company_id = $2`,
       [id, companyId],
     );
     if (existing.rows.length === 0) {
@@ -108,14 +111,23 @@ export async function updateRole(req: Request, res: Response): Promise<void> {
       body.permissions !== undefined
         ? { ...row.permissions, ...body.permissions }
         : row.permissions;
+    const nextHierarchyTier = body.hierarchyTier ?? row.hierarchy_tier;
 
     const r = await pool.query(
       `UPDATE company_roles
-       SET name = COALESCE($1, name), permissions = $2::jsonb
-       WHERE id = $3 AND company_id = $4
-       RETURNING id, name, base_role, permissions, created_at`,
-      [nextName ?? null, JSON.stringify(mergedPerms), id, companyId],
+       SET name = COALESCE($1, name), permissions = $2::jsonb, hierarchy_tier = $3
+       WHERE id = $4 AND company_id = $5
+       RETURNING id, name, base_role, permissions, created_at, hierarchy_tier`,
+      [nextName ?? null, JSON.stringify(mergedPerms), nextHierarchyTier, id, companyId],
     );
+    
+    if (nextHierarchyTier !== row.hierarchy_tier) {
+      await pool.query(
+        `UPDATE users SET hierarchy_tier = $1 WHERE company_role_id = $2 AND company_id = $3 AND role != 'admin'`,
+        [nextHierarchyTier, id, companyId],
+      );
+    }
+    
     res.json({ role: mapRoleRow(r.rows[0]) });
   } catch (e) {
     if (e instanceof ZodError) {
@@ -225,8 +237,8 @@ export async function createMember(req: Request, res: Response): Promise<void> {
     const companyId = req.auth!.companyId;
     const emailNorm = body.email.trim().toLowerCase();
 
-    const roleRes = await pool.query<{ base_role: string }>(
-      `SELECT base_role FROM company_roles WHERE id = $1 AND company_id = $2`,
+    const roleRes = await pool.query<{ base_role: string; hierarchy_tier: number }>(
+      `SELECT base_role, hierarchy_tier FROM company_roles WHERE id = $1 AND company_id = $2`,
       [body.companyRoleId, companyId],
     );
     if (roleRes.rows.length === 0) {
@@ -234,6 +246,7 @@ export async function createMember(req: Request, res: Response): Promise<void> {
       return;
     }
     const baseRole = roleRes.rows[0].base_role as "employee" | "manager";
+    const initialTier = roleRes.rows[0].hierarchy_tier;
 
     if (body.managerId != null) {
       const mgr = await pool.query(
@@ -251,7 +264,6 @@ export async function createMember(req: Request, res: Response): Promise<void> {
     }
 
     const passwordHash = await bcrypt.hash(body.password, BCRYPT_ROUNDS);
-    const initialTier = baseRole === "employee" ? 0 : 20;
 
     const ins = await pool.query(
       `INSERT INTO users (company_id, email, password_hash, full_name, role, manager_id, company_role_id, hierarchy_tier)
@@ -335,9 +347,10 @@ export async function updateMember(req: Request, res: Response): Promise<void> {
 
     let nextSystemRole: string | undefined;
     let nextCompanyRoleId: number | undefined;
+    let nextTier: number | undefined;
     if (body.companyRoleId !== undefined) {
-      const roleRes = await pool.query<{ base_role: string }>(
-        `SELECT base_role FROM company_roles WHERE id = $1 AND company_id = $2`,
+      const roleRes = await pool.query<{ base_role: string; hierarchy_tier: number }>(
+        `SELECT base_role, hierarchy_tier FROM company_roles WHERE id = $1 AND company_id = $2`,
         [body.companyRoleId, companyId],
       );
       if (roleRes.rows.length === 0) {
@@ -346,6 +359,7 @@ export async function updateMember(req: Request, res: Response): Promise<void> {
       }
       nextSystemRole = roleRes.rows[0].base_role;
       nextCompanyRoleId = body.companyRoleId;
+      nextTier = roleRes.rows[0].hierarchy_tier;
     }
 
     let nextManagerId: number | null | undefined = undefined;
@@ -396,6 +410,13 @@ export async function updateMember(req: Request, res: Response): Promise<void> {
        WHERE id = $4 AND company_id = $5`,
       [finalRole, finalCompanyRoleId, finalManagerId, memberId, companyId],
     );
+    
+    if (nextTier !== undefined) {
+      await pool.query(
+        `UPDATE users SET hierarchy_tier = $1 WHERE id = $2 AND company_id = $3 AND role != 'admin'`,
+        [nextTier, memberId, companyId],
+      );
+    }
 
     res.json({ success: true });
   } catch (e) {
