@@ -7,7 +7,7 @@ const Signup = () => {
     <div className="flex flex-col items-center">
        <SignupForm />
        
-       <div className="mt-8 text-center text-sm text-slate-600">
+       <div className="auth-copy mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
          Already have an account?{' '}
          <Link to="/auth/login" className="font-semibold text-primary hover:text-primary-dark transition-colors">
             Sign in here

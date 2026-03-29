@@ -38,6 +38,18 @@
     font-family: "Space Grotesk", "Segoe UI", sans-serif;
   }
 
+  .auth-root {
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  }
+
+  .auth-copy {
+    font-family: "Manrope", "Segoe UI", sans-serif;
+  }
+
+  .auth-input {
+    @apply rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40;
+  }
+
   .landing-copy {
     font-family: "Manrope", "Segoe UI", sans-serif;
   }
@@ -61,6 +73,26 @@
   .landing-soft-glow {
     animation: landing-soft-glow 4.5s ease-in-out infinite;
   }
+
+  .landing-glass {
+    backdrop-filter: blur(8px);
+  }
+
+  .landing-orb {
+    animation: landing-float 10s ease-in-out infinite;
+  }
+
+  .auth-orb {
+    animation: landing-float 9s ease-in-out infinite;
+  }
+
+  .landing-orb-a {
+    animation-delay: 0ms;
+  }
+
+  .landing-orb-b {
+    animation-delay: 800ms;
+  }
 }
 
 @keyframes landing-fade-up {
@@ -83,5 +115,16 @@
 
   50% {
     box-shadow: 0 0 0 10px rgba(29, 78, 216, 0);
+  }
+}
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+
+  50% {
+    transform: translateY(-12px) translateX(8px);
   }
 }
