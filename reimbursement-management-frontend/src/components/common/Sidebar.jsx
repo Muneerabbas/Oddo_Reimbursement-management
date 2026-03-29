@@ -28,7 +28,7 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
 
   // Insert Admin specific panel conditionally
   if (role === 'admin') {
-    navItems.push({ label: 'Admin Panel', path: '/admin', icon: <Shield size={20} /> });
+    navItems.push({ label: 'User Management', path: '/admin/users', icon: <Shield size={20} /> });
   }
 
   const handleMobileClose = () => {
