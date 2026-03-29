@@ -28,7 +28,7 @@ if (!hasDatabaseUrl && !hasDiscreteDbConfig) {
 }
 
 export const env = {
-  port: Number(process.env.PORT || 5000),
+  port: Number(process.env.PORT || 5001),
   databaseUrl: process.env.DATABASE_URL,
   dbHost: process.env.DB_HOST,
   dbPort: Number(process.env.DB_PORT || 5432),
