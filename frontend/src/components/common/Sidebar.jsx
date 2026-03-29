@@ -9,7 +9,6 @@ import {
   List,
   CheckSquare,
   SlidersHorizontal,
-  Shield,
   UsersRound,
   ScrollText,
   X,
@@ -18,25 +17,33 @@ import {
 const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
   const { role, user } = useAuth();
   const normalizedRole = typeof role === 'string' ? role.toLowerCase() : '';
+  const normalizedCompanyRoleName = String(user?.companyRole?.name || '').trim().toLowerCase();
+  const isDirector = normalizedCompanyRoleName === 'director';
   const isAdmin = normalizedRole === 'admin';
   const isEmployee = normalizedRole === 'employee';
   const isManagerLike = !isAdmin && !isEmployee;
+  const isEmployeeStandard = isEmployee && !isDirector;
 
-  // Employees keep expense flow. Admins use logs. Manager-like roles get workflow logs.
   const primaryNavItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, exact: true },
-    ...(isEmployee ? [{ label: 'Submit Expense', path: '/expenses/new', icon: PlusCircle }] : []),
-    ...(isEmployee ? [{ label: 'Expenses', path: '/expenses', icon: List, exact: true }] : []),
-    ...(isAdmin ? [{ label: 'Logs', path: '/logs', icon: ScrollText, exact: true }] : []),
   ];
 
   const workflowNavItems = [];
 
-  if (isManagerLike || isAdmin) {
+  if (isEmployeeStandard) {
+    workflowNavItems.push({ label: 'Submit Expense', path: '/expenses/new', icon: PlusCircle });
+    workflowNavItems.push({ label: 'Expenses', path: '/expenses', icon: List, exact: true });
+  }
+
+  if (isDirector) {
+    workflowNavItems.push({ label: 'Expenses', path: '/expenses', icon: List, exact: true });
+  }
+
+  if (isManagerLike || isAdmin || isDirector) {
     workflowNavItems.push({ label: 'Approvals', path: '/approvals', icon: CheckSquare, exact: true });
   }
 
-  if (isManagerLike) {
+  if (isManagerLike || isAdmin) {
     workflowNavItems.push({ label: 'Logs', path: '/logs', icon: ScrollText, exact: true });
   }
 
@@ -51,10 +58,6 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
   const handleMobileClose = () => {
     if (setMobileOpen) setMobileOpen(false);
   };
-
-  const roleLabel = normalizedRole
-    ? `${normalizedRole.charAt(0).toUpperCase()}${normalizedRole.slice(1)}`
-    : 'User';
 
   const renderNavList = (items) => (
     <div className="space-y-1.5">

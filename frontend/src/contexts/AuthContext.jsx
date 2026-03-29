@@ -12,6 +12,7 @@ import {
 export const AuthContext = createContext({
   user: null,
   role: null,
+  displayRole: null,
   isAuthenticated: false,
   login: () => {},
   logout: () => {},
@@ -90,6 +91,10 @@ export const AuthProvider = ({ children }) => {
   const contextValue = {
     user,
     role,
+    displayRole:
+      user?.role === 'admin'
+        ? 'Admin'
+        : (user?.companyRole?.name || (role ? `${role.charAt(0).toUpperCase()}${role.slice(1)}` : null)),
     isAuthenticated: !!user && !!getAccessToken(),
     login: loginUser,
     logout: logoutUser,

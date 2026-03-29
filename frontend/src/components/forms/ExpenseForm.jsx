@@ -1,6 +1,16 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UploadCloud, FileType2, Calendar, FileText, ScanLine, Calculator } from 'lucide-react';
+import {
+  UploadCloud,
+  FileType2,
+  Calendar,
+  FileText,
+  ScanLine,
+  Calculator,
+  Sparkles,
+  BadgeCheck,
+  AlertTriangle,
+} from 'lucide-react';
 import expenseService from '../../services/expenseService';
 import notificationService from '../../services/notificationService';
 
@@ -33,6 +43,20 @@ const ExpenseForm = () => {
         .map(([key]) => key),
     );
   }, [aiExtraction]);
+
+  const completion = useMemo(() => {
+    const checks = [
+      !!formData.amount,
+      !!formData.date,
+      !!formData.category,
+      !!formData.description,
+      !!fileDetails?.file,
+    ];
+    const completed = checks.filter(Boolean).length;
+    const total = checks.length;
+    const percent = Math.round((completed / total) * 100);
+    return { completed, total, percent };
+  }, [formData, fileDetails]);
 
   useEffect(() => {
     let active = true;
@@ -73,7 +97,7 @@ const ExpenseForm = () => {
         if (!active || !result) return;
         const base = Number(formData.amount).toFixed(2);
         setConvertedPreview(
-          `${base} ${formData.currency} ≈ ${result.convertedAmount.toFixed(2)} ${deviceCurrency}`,
+          `${base} ${formData.currency} ~ ${result.convertedAmount.toFixed(2)} ${deviceCurrency}`,
         );
       } catch {
         if (!active) return;
@@ -221,158 +245,211 @@ const ExpenseForm = () => {
     lowConfidenceFields.has(key) ? 'border-amber-400 bg-amber-50/40' : 'border-slate-300';
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="amount">
-              Expense Amount <span className="text-red-500">*</span>
-            </label>
-            <div className="flex relative items-stretch">
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                id="amount"
-                name="amount"
-                placeholder="0.00"
-                value={formData.amount}
-                onChange={handleChange}
-                required
-                disabled={isLoading || isOcrLoading}
-                className={`w-full pl-4 pr-4 py-2 border rounded-l-lg border-r-0 focus:ring-2 focus:ring-primary focus:border-primary focus:z-10 focus:outline-none transition-colors disabled:bg-slate-50 disabled:text-slate-500 ${inputBorder('amount')}`}
-              />
-
-              <select
-                name="currency"
-                value={formData.currency}
-                onChange={handleChange}
-                disabled={isLoading || isOcrLoading}
-                className={`bg-slate-50 border text-slate-700 text-sm rounded-r-lg focus:ring-2 focus:ring-primary focus:border-primary focus:z-10 focus:outline-none transition-colors px-3 py-2 disabled:text-slate-400 ${inputBorder('currency')}`}
-              >
-                {supportedCurrencies.map((cur) => (
-                  <option key={cur} value={cur}>
-                    {cur}
-                  </option>
-                ))}
-              </select>
+    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] shadow-[0_24px_65px_-35px_rgba(15,23,42,0.4)]">
+      <form onSubmit={handleSubmit} className="space-y-8 p-6 sm:p-8">
+        <section className="rounded-2xl border border-slate-200 bg-white/80 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Submission Readiness
+              </p>
+              <p className="mt-1 text-sm text-slate-700">
+                {completion.completed} of {completion.total} required items completed
+              </p>
             </div>
-
-            {convertedPreview && (
-              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600 font-medium">
-                <Calculator size={12} />
-                <span>
-                  Estimated ({deviceCountryName || 'your locale'}): {convertedPreview}
-                </span>
-              </div>
-            )}
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-700">
+              {completion.percent}%
+            </span>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="date">
-              Transaction Date <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Calendar size={18} />
-              </div>
-              <input
-                type="date"
-                id="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                required
-                disabled={isLoading || isOcrLoading}
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-colors disabled:bg-slate-50 disabled:text-slate-500 ${inputBorder('date')}`}
-              />
-            </div>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="category">
-              Expense Category <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <FileType2 size={18} />
-              </div>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                required
-                disabled={isLoading || isOcrLoading}
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none bg-white transition-colors disabled:bg-slate-50 disabled:text-slate-500 ${!formData.category ? 'text-slate-400' : 'text-slate-900'} ${inputBorder('category')}`}
-              >
-                <option value="" disabled>
-                  Select category classification...
-                </option>
-                <option value="Travel">Travel & Transportation</option>
-                <option value="Meals">Meals & Entertainment</option>
-                <option value="Supplies">Office Supplies</option>
-                <option value="Software">Software Subscriptions</option>
-                <option value="Hardware">Hardware / Equipment</option>
-                <option value="Other">Other Miscellaneous</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="description">
-              Business Purpose Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows="3"
-              placeholder="Briefly describe the business need for this expense..."
-              value={formData.description}
-              onChange={handleChange}
-              required
-              disabled={isLoading || isOcrLoading}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-colors resize-none disabled:bg-slate-50 disabled:text-slate-500 ${inputBorder('description')}`}
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+            <div
+              className={`h-full rounded-full transition-all ${
+                completion.percent === 100 ? 'bg-emerald-500' : 'bg-primary'
+              }`}
+              style={{ width: `${completion.percent}%` }}
             />
           </div>
-        </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+              {fileDetails ? <BadgeCheck size={13} className="text-emerald-600" /> : <UploadCloud size={13} />}
+              {fileDetails ? 'Receipt attached' : 'Receipt pending'}
+            </span>
+            {aiExtraction && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Sparkles size={13} />
+                OCR confidence {Math.round((aiExtraction.confidence || 0) * 100)}%
+              </span>
+            )}
+            {lowConfidenceFields.size > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                <AlertTriangle size={13} />
+                {lowConfidenceFields.size} field{lowConfidenceFields.size === 1 ? '' : 's'} need review
+              </span>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="mb-5">
+            <h3 className="text-lg font-semibold text-slate-900">Expense Details</h3>
+            <p className="mt-1 text-sm text-slate-500">Fill core transaction details before upload.</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="amount">
+                Expense Amount <span className="text-red-500">*</span>
+              </label>
+              <div className="relative flex items-stretch">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  id="amount"
+                  name="amount"
+                  placeholder="0.00"
+                  value={formData.amount}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading || isOcrLoading}
+                  className={`w-full rounded-l-xl border border-r-0 px-4 py-2.5 focus:z-10 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-slate-50 disabled:text-slate-500 ${inputBorder('amount')}`}
+                />
+                <select
+                  name="currency"
+                  value={formData.currency}
+                  onChange={handleChange}
+                  disabled={isLoading || isOcrLoading}
+                  className={`rounded-r-xl border bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:z-10 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:text-slate-400 ${inputBorder('currency')}`}
+                >
+                  {supportedCurrencies.map((cur) => (
+                    <option key={cur} value={cur}>
+                      {cur}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {convertedPreview && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <Calculator size={12} />
+                  <span>
+                    Estimate ({deviceCountryName || 'your locale'}): {convertedPreview}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="date">
+                Transaction Date <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                  <Calendar size={18} />
+                </div>
+                <input
+                  type="date"
+                  id="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading || isOcrLoading}
+                  className={`w-full rounded-xl border py-2.5 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-slate-50 disabled:text-slate-500 ${inputBorder('date')}`}
+                />
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="category">
+                Expense Category <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                  <FileType2 size={18} />
+                </div>
+                <select
+                  id="category"
+                  name="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading || isOcrLoading}
+                  className={`w-full rounded-xl border bg-white py-2.5 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-slate-50 disabled:text-slate-500 ${!formData.category ? 'text-slate-400' : 'text-slate-900'} ${inputBorder('category')}`}
+                >
+                  <option value="" disabled>
+                    Select category classification...
+                  </option>
+                  <option value="Travel">Travel & Transportation</option>
+                  <option value="Meals">Meals & Entertainment</option>
+                  <option value="Supplies">Office Supplies</option>
+                  <option value="Software">Software Subscriptions</option>
+                  <option value="Hardware">Hardware / Equipment</option>
+                  <option value="Other">Other Miscellaneous</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="description">
+                Business Purpose Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                rows="3"
+                placeholder="Briefly describe the business need for this expense..."
+                value={formData.description}
+                onChange={handleChange}
+                required
+                disabled={isLoading || isOcrLoading}
+                className={`w-full resize-none rounded-xl border px-4 py-2.5 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-slate-50 disabled:text-slate-500 ${inputBorder('description')}`}
+              />
+            </div>
+          </div>
+        </section>
 
         {aiExtraction && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm space-y-2">
+          <section className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-slate-800">AI extraction</span>
-              <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-semibold">
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                 Confidence {Math.round((aiExtraction.confidence || 0) * 100)}%
               </span>
             </div>
             {Array.isArray(aiExtraction.flags) && aiExtraction.flags.length > 0 && (
-              <div className="text-amber-700">Flags: {aiExtraction.flags.join(', ')}</div>
+              <div className="mt-1.5 text-amber-700">Flags: {aiExtraction.flags.join(', ')}</div>
             )}
             {Array.isArray(aiExtraction.expenseLines) && aiExtraction.expenseLines.length > 0 && (
-              <div className="text-slate-700 text-xs">
-                Extracted lines: {aiExtraction.expenseLines.slice(0, 4).map((l) => l.label).filter(Boolean).join(', ')}
+              <div className="mt-1.5 text-xs text-slate-700">
+                Extracted lines:{' '}
+                {aiExtraction.expenseLines
+                  .slice(0, 4)
+                  .map((l) => l.label)
+                  .filter(Boolean)
+                  .join(', ')}
               </div>
             )}
-            <p className="text-slate-600 text-xs">
+            <p className="mt-1.5 text-xs text-slate-600">
               Low-confidence fields are highlighted in amber. Please review before submitting.
             </p>
-          </div>
+          </section>
         )}
 
-        <hr className="border-slate-200" />
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-slate-700">Receipt Upload</label>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Receipt Upload</h3>
+              <p className="mt-1 text-sm text-slate-500">Attach the bill and optionally auto-fill fields.</p>
+            </div>
             {fileDetails && (
               <button
                 type="button"
                 onClick={handleAutoFillOCR}
                 disabled={isLoading || isOcrLoading}
-                className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-full transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
               >
                 {isOcrLoading ? (
-                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-emerald-700 border-t-transparent" />
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-700 border-t-transparent" />
                 ) : (
                   <ScanLine size={12} />
                 )}
@@ -384,36 +461,36 @@ const ExpenseForm = () => {
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            className={`relative w-full border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-colors ${
+            className={`relative flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${
               fileDetails
-                ? 'border-primary bg-primary/5'
-                : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'
+                ? 'border-primary/50 bg-primary/5'
+                : 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100'
             }`}
           >
             {!fileDetails ? (
               <>
-                <UploadCloud size={40} className="text-slate-400 mb-3" />
-                <p className="text-sm font-medium text-slate-700 text-center">
+                <UploadCloud size={40} className="mb-3 text-slate-400" />
+                <p className="text-sm font-medium text-slate-700">
                   Drag and drop your receipt here, or{' '}
-                  <span className="text-primary cursor-pointer hover:underline">browse files</span>
+                  <span className="cursor-pointer text-primary hover:underline">browse files</span>
                 </p>
-                <p className="text-xs text-slate-400 mt-2 text-center text-balance">
-                  Supported formats: .pdf, .jpg, .png, and common office docs. Maximum file size: 10MB.
+                <p className="mt-2 text-xs text-slate-400">
+                  Supported formats: .pdf, .jpg, .png. Maximum file size: 10MB.
                 </p>
 
                 <input
                   type="file"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                   onChange={handleFileChange}
                   accept=".pdf,image/*"
                   disabled={isLoading || isOcrLoading}
                 />
               </>
             ) : (
-              <div className="flex flex-col items-center text-center">
-                <FileText size={40} className="text-primary mb-3" />
+              <div className="flex flex-col items-center">
+                <FileText size={40} className="mb-3 text-primary" />
                 <p className="text-sm font-semibold text-slate-800">{fileDetails.name}</p>
-                <p className="text-xs text-slate-500 mt-1">{fileDetails.size} attached correctly</p>
+                <p className="mt-1 text-xs text-slate-500">{fileDetails.size} attached successfully</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -421,33 +498,32 @@ const ExpenseForm = () => {
                     setAiExtraction(null);
                   }}
                   disabled={isLoading || isOcrLoading}
-                  className="mt-4 text-xs font-medium text-red-600 hover:text-red-700 focus:outline-none p-1"
+                  className="mt-4 p-1 text-xs font-medium text-red-600 hover:text-red-700 focus:outline-none"
                 >
                   Remove attachment
                 </button>
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-2">
           <button
             type="button"
             onClick={() => navigate('/expenses')}
             disabled={isLoading || isOcrLoading}
-            className="px-5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50"
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
           >
             Cancel Draft
           </button>
-
           <button
             type="submit"
             disabled={isLoading || isOcrLoading}
-            className="px-5 py-2 text-sm font-semibold text-white bg-primary rounded-lg shadow hover:bg-primary-dark hover:shadow-md transition-all flex items-center gap-2 min-w-[140px] justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+            className="flex min-w-[160px] items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow transition-all hover:bg-slate-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 <span>Submitting...</span>
               </>
             ) : (
@@ -461,3 +537,5 @@ const ExpenseForm = () => {
 };
 
 export default ExpenseForm;
+
+
