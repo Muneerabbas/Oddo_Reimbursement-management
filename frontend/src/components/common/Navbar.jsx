@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Menu, LogOut, User } from 'lucide-react';
 import notificationService from '../../services/notificationService';
+import NotificationBell from './NotificationBell';
 
 const Navbar = ({ toggleMobileMenu }) => {
   const { user, role, logout } = useAuth(); // Pull global session context
@@ -37,6 +38,8 @@ const Navbar = ({ toggleMobileMenu }) => {
             {role}
           </span>
         )}
+
+        <NotificationBell userId={user?.id} role={role} />
 
         {/* User Identity Segment */}
         <div className="flex items-center gap-3 border-l border-slate-200 pl-4 sm:pl-6">
