@@ -30,7 +30,18 @@ CREATE TABLE IF NOT EXISTS users (
   role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'manager', 'employee', 'finance', 'auditor')),
   manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   company_role_id INTEGER REFERENCES company_roles(id) ON DELETE SET NULL,
+  hierarchy_tier INTEGER NOT NULL DEFAULT 0 CHECK (hierarchy_tier >= 0 AND hierarchy_tier <= 999),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS reporting_links (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  subordinate_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  supervisor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT reporting_links_no_self CHECK (subordinate_id <> supervisor_id),
+  CONSTRAINT reporting_links_pair_unique UNIQUE (company_id, subordinate_id, supervisor_id)
 );
 
 ALTER TABLE companies
@@ -129,6 +140,10 @@ CREATE TABLE IF NOT EXISTS expense_submissions (
 CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id);
 CREATE INDEX IF NOT EXISTS idx_users_manager_id ON users(manager_id);
 CREATE INDEX IF NOT EXISTS idx_users_company_role_id ON users(company_role_id);
+CREATE INDEX IF NOT EXISTS idx_users_hierarchy_tier ON users(company_id, hierarchy_tier);
+CREATE INDEX IF NOT EXISTS idx_reporting_links_company ON reporting_links(company_id);
+CREATE INDEX IF NOT EXISTS idx_reporting_links_sub ON reporting_links(subordinate_id);
+CREATE INDEX IF NOT EXISTS idx_reporting_links_sup ON reporting_links(supervisor_id);
 CREATE INDEX IF NOT EXISTS idx_company_roles_company_id ON company_roles(company_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_company_id ON expenses(company_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_employee_id ON expenses(employee_id);

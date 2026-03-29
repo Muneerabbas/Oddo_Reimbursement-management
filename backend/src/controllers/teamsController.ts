@@ -157,7 +157,7 @@ export async function deleteRole(req: Request, res: Response): Promise<void> {
 export async function listMembers(req: Request, res: Response): Promise<void> {
   const companyId = req.auth!.companyId;
   const r = await pool.query(
-    `SELECT u.id, u.full_name, u.email, u.role, u.manager_id, u.company_role_id,
+    `SELECT u.id, u.full_name, u.email, u.role, u.manager_id, u.company_role_id, u.hierarchy_tier,
             cr.name AS team_role_name, cr.base_role AS team_role_base,
             m.full_name AS manager_name
      FROM users u
@@ -173,6 +173,7 @@ export async function listMembers(req: Request, res: Response): Promise<void> {
       fullName: row.full_name,
       email: row.email,
       systemRole: row.role,
+      hierarchyTier: row.hierarchy_tier,
       managerId: row.manager_id,
       managerName: row.manager_name,
       companyRole: row.company_role_id
@@ -235,10 +236,11 @@ export async function createMember(req: Request, res: Response): Promise<void> {
     }
 
     const passwordHash = await bcrypt.hash(body.password, BCRYPT_ROUNDS);
+    const initialTier = baseRole === "employee" ? 0 : 20;
 
     const ins = await pool.query(
-      `INSERT INTO users (company_id, email, password_hash, full_name, role, manager_id, company_role_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO users (company_id, email, password_hash, full_name, role, manager_id, company_role_id, hierarchy_tier)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, full_name, email, role, manager_id, company_role_id`,
       [
         companyId,
@@ -248,10 +250,20 @@ export async function createMember(req: Request, res: Response): Promise<void> {
         baseRole,
         baseRole === "employee" ? body.managerId ?? null : null,
         body.companyRoleId,
+        initialTier,
       ],
     );
 
     const row = ins.rows[0];
+
+    if (baseRole === "employee" && body.managerId != null) {
+      await pool.query(
+        `INSERT INTO reporting_links (company_id, subordinate_id, supervisor_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT ON CONSTRAINT reporting_links_pair_unique DO NOTHING`,
+        [companyId, row.id, body.managerId],
+      );
+    }
     res.status(201).json({
       member: {
         id: row.id,

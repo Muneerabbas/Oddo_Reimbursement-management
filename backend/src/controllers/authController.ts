@@ -130,8 +130,8 @@ export async function register(req: Request, res: Response): Promise<void> {
       const companyId = companyInsert.rows[0].id;
 
       const userInsert = await client.query<UserRow>(
-        `INSERT INTO users (company_id, email, password_hash, full_name, role, manager_id, company_role_id)
-         VALUES ($1, $2, $3, $4, 'admin', NULL, NULL)
+        `INSERT INTO users (company_id, email, password_hash, full_name, role, manager_id, company_role_id, hierarchy_tier)
+         VALUES ($1, $2, $3, $4, 'admin', NULL, NULL, 100)
          RETURNING id, company_id, email, full_name, role`,
         [companyId, emailNorm, passwordHash, body.fullName.trim()],
       );

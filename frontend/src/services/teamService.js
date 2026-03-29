@@ -73,6 +73,34 @@ const teamService = {
     request(async () => {
       await apiClient.delete(`/teams/members/${id}`);
     }),
+
+  getHierarchy: () =>
+    request(async () => {
+      const { data } = await apiClient.get('/teams/hierarchy');
+      return data;
+    }),
+
+  createReportingLink: (subordinateId, supervisorId) =>
+    request(async () => {
+      const { data } = await apiClient.post('/teams/hierarchy/links', {
+        subordinateId,
+        supervisorId,
+      });
+      return data.link;
+    }),
+
+  deleteReportingLink: (subordinateId, supervisorId) =>
+    request(async () => {
+      await apiClient.delete(`/teams/hierarchy/links/${subordinateId}/${supervisorId}`);
+    }),
+
+  updateUserHierarchyTier: (userId, hierarchyTier) =>
+    request(async () => {
+      const { data } = await apiClient.patch(`/teams/hierarchy/users/${userId}/tier`, {
+        hierarchyTier,
+      });
+      return data;
+    }),
 };
 
 export default teamService;

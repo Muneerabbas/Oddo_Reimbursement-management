@@ -36,7 +36,7 @@ let mockUsers = [
   {
     id: 'USR-3002',
     name: 'Noah Singh',
-    email: 'noah.singh@odoo.com',
+    email: 'noah.singh@oddo.com',
     role: 'employee',
     managerId: 'USR-2002',
   },
