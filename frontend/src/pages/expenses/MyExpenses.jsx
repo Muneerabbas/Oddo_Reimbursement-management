@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, X, ReceiptText } from 'lucide-react';
+import { Plus, Search, Filter, X, ReceiptText, Download } from 'lucide-react';
 import expenseService from '../../services/expenseService';
 import ExpenseTable from '../../components/ui/ExpenseTable';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -100,6 +100,15 @@ const MyExpenses = () => {
     }
   };
 
+  const handleExportCsv = () => {
+    try {
+      expenseService.exportExpensesCsv(filteredData);
+    } catch (err) {
+      console.error(err);
+      notificationService.error(err.message || 'Unable to export expenses.');
+    }
+  };
+
 
   return (
     <div className="page-stack relative">
@@ -107,13 +116,25 @@ const MyExpenses = () => {
         title="Your Expenses"
         description="Review past submissions, track statuses, and file new claims."
         actions={(
-          <Link
-            to="/expenses/new"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark"
-          >
-            <Plus size={18} />
-            Report Expense
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={isLoading || filteredData.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download size={18} />
+              Export CSV
+            </button>
+
+            <Link
+              to="/expenses/new"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark"
+            >
+              <Plus size={18} />
+              Report Expense
+            </Link>
+          </div>
         )}
       />
 
