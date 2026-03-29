@@ -24,13 +24,17 @@ function layoutNodes(apiNodes) {
   const tiers = [...new Set(apiNodes.map((n) => n.hierarchyTier))].sort((a, b) => a - b);
   const maxT = Math.max(...tiers);
   const out = [];
-  for (const tier of tiers) {
+  tiers.forEach((tier, tierIdx) => {
     const row = apiNodes
       .filter((n) => n.hierarchyTier === tier)
       .sort((a, b) => a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' }));
+    
+    // Reverse the index so highest tier is at the top (y=0)
+    const reversedIdx = tiers.length - 1 - tierIdx;
+    
     row.forEach((n, i) => {
       const x = (i - (row.length - 1) / 2) * COL_GAP;
-      const y = (maxT - tier) * ROW_GAP;
+      const y = reversedIdx * ROW_GAP;
       out.push({
         id: String(n.id),
         type: 'person',
@@ -38,7 +42,7 @@ function layoutNodes(apiNodes) {
         data: n,
       });
     });
-  }
+  });
   return out;
 }
 
