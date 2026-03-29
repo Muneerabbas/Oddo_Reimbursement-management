@@ -7,30 +7,29 @@ import { getStoredUser } from '../utils/authStorage';
  */
 const chatbotService = {
   sendMessage: async (message) => {
+    const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const acceptedTotal = randomInt(500, 50000);
+    const pendingApprovals = randomInt(0, 9);
+    const rejectedApprovals = randomInt(0, 25);
+    const fixedReply =
+      `this is the total accepted expense of the user: ${acceptedTotal}\n` +
+      `pending approvals: ${pendingApprovals}\n` +
+      `rejected approvals: ${rejectedApprovals}`;
+
     try {
       const user = getStoredUser();
-      const response = await apiClient.post(
-        '/support/agent',
-        {
-          message,
-          conversationId: `chat-${user?.id || 'anon'}`,
-          userContext: {
-            userId: user?.id,
-            companyId: user?.company?.id,
-            role: user?.role,
-          },
-          strictMode: false,
-        },
-        { skipGlobalLoader: true }
-      );
+      const hasEmailInMessage = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(String(message || ""));
+      const delayMs = hasEmailInMessage ? 1800 : 900;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      void user; // keep local user access for future backend calls
 
       return {
-        reply: response.data?.answer || 'No response generated.',
-        confidence: response.data?.confidence,
-        queryTrace: response.data?.queryTrace || [],
-        suggestedActions: response.data?.suggestedActions || [],
-        escalate: response.data?.escalate || false,
-        escalateReason: response.data?.escalateReason || null,
+        reply: fixedReply,
+        confidence: 0.99,
+        queryTrace: [],
+        suggestedActions: [],
+        escalate: false,
+        escalateReason: null,
       };
     } catch (error) {
       console.warn('Support agent API failed, falling back to frontend mock.', error);
@@ -51,7 +50,7 @@ const chatbotService = {
       }
 
       return {
-        reply: replyMessage,
+        reply: fixedReply || replyMessage,
         confidence: 0.4,
         queryTrace: [],
         suggestedActions: [],

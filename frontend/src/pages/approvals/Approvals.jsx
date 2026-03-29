@@ -109,7 +109,8 @@ const Approvals = () => {
 
   const handleViewDocument = async (request) => {
     try {
-      await expenseService.viewExpenseDocument(request.id);
+      const targetExpenseId = request?.expenseId ? `EXP-${request.expenseId}` : request.id;
+      await expenseService.viewExpenseDocument(targetExpenseId);
     } catch (err) {
       console.error(err);
       notificationService.error(err.message || 'Unable to open receipt document.');

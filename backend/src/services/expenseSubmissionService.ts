@@ -1,5 +1,10 @@
 import { pool } from "../config/db";
 import type { CreateExpenseSubmissionInput } from "../schemas/expenseSchemas";
+import {
+  initializeApprovalWorkflow,
+  listPendingApprovalsForApprover,
+  resolveApprovalDecision,
+} from "./approvalWorkflowService";
 
 type CreateExpenseSubmissionRecordInput = CreateExpenseSubmissionInput & {
   companyId: number;
@@ -12,6 +17,7 @@ type CreateExpenseSubmissionRecordInput = CreateExpenseSubmissionInput & {
 
 type ExpenseSubmissionRow = {
   id: number;
+  legacy_expense_id?: number | null;
   expense_date: string;
   category: string;
   description: string;
@@ -89,6 +95,7 @@ export const ensureExpenseSubmissionsTableExists = async (): Promise<void> => {
       .query(`
         CREATE TABLE IF NOT EXISTS expense_submissions (
           id SERIAL PRIMARY KEY,
+          legacy_expense_id INTEGER REFERENCES expenses(id) ON DELETE SET NULL,
           company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
           employee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           expense_date DATE NOT NULL,
@@ -110,11 +117,13 @@ export const ensureExpenseSubmissionsTableExists = async (): Promise<void> => {
         ALTER TABLE expense_submissions ADD COLUMN IF NOT EXISTS approval_comment TEXT;
         ALTER TABLE expense_submissions ADD COLUMN IF NOT EXISTS reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
         ALTER TABLE expense_submissions ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP NULL;
+        ALTER TABLE expense_submissions ADD COLUMN IF NOT EXISTS legacy_expense_id INTEGER REFERENCES expenses(id) ON DELETE SET NULL;
 
         CREATE INDEX IF NOT EXISTS idx_expense_submissions_company_id ON expense_submissions(company_id);
         CREATE INDEX IF NOT EXISTS idx_expense_submissions_employee_id ON expense_submissions(employee_id);
         CREATE INDEX IF NOT EXISTS idx_expense_submissions_created_at ON expense_submissions(created_at);
         CREATE INDEX IF NOT EXISTS idx_expense_submissions_status ON expense_submissions(company_id, status, created_at);
+        CREATE INDEX IF NOT EXISTS idx_expense_submissions_legacy_expense_id ON expense_submissions(legacy_expense_id);
       `)
       .then(() => undefined)
       .catch((error) => {
@@ -128,6 +137,7 @@ export const ensureExpenseSubmissionsTableExists = async (): Promise<void> => {
 
 const mapExpenseSubmissionRow = (row: ExpenseSubmissionRow) => ({
   id: `EXP-${row.id}`,
+  legacyExpenseId: row.legacy_expense_id ?? null,
   date: row.expense_date,
   category: row.category,
   description: row.description,
@@ -179,25 +189,106 @@ const mapPendingApprovalRow = (row: PendingApprovalRow, reviewerRole: string) =>
 
 export const createExpenseSubmission = async (input: CreateExpenseSubmissionRecordInput) => {
   await ensureExpenseSubmissionsTableExists();
+  const client = await pool.connect();
+  let submissionId: number | null = null;
+  let legacyExpenseId: number | null = null;
+
+  try {
+    await client.query("BEGIN");
+
+    const insertedSubmission = await client.query<ExpenseSubmissionRow>(
+      `
+        INSERT INTO expense_submissions (
+          company_id,
+          employee_id,
+          expense_date,
+          category,
+          description,
+          amount,
+          currency,
+          receipt_file_name,
+          receipt_mime_type,
+          receipt_size,
+          receipt_data
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id
+      `,
+      [
+        input.companyId,
+        input.employeeId,
+        input.date,
+        input.category,
+        input.description,
+        input.amount,
+        input.currency.toUpperCase(),
+        input.receiptFileName,
+        input.receiptMimeType,
+        input.receiptSize,
+        input.receiptData,
+      ],
+    );
+    submissionId = insertedSubmission.rows[0].id;
+
+    const insertedExpense = await client.query<{ id: number }>(
+      `
+        INSERT INTO expenses (
+          company_id,
+          employee_id,
+          amount_original,
+          currency_original,
+          amount_converted,
+          category,
+          description,
+          expense_date,
+          receipt_url,
+          status
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, 'pending')
+        RETURNING id
+      `,
+      [
+        input.companyId,
+        input.employeeId,
+        input.amount,
+        input.currency.toUpperCase(),
+        input.amount,
+        input.category,
+        input.description,
+        input.date,
+      ],
+    );
+    legacyExpenseId = insertedExpense.rows[0].id;
+
+    await client.query(
+      `UPDATE expense_submissions SET legacy_expense_id = $1 WHERE id = $2`,
+      [legacyExpenseId, submissionId],
+    );
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  if (!submissionId || !legacyExpenseId) {
+    throw new Error("Failed to initialize expense workflow.");
+  }
+
+  await initializeApprovalWorkflow({
+    companyId: input.companyId,
+    employeeId: input.employeeId,
+    expenseId: legacyExpenseId,
+    amount: input.amount,
+  });
 
   const result = await pool.query<ExpenseSubmissionRow>(
     `
-      INSERT INTO expense_submissions (
-        company_id,
-        employee_id,
-        expense_date,
-        category,
-        description,
-        amount,
-        currency,
-        receipt_file_name,
-        receipt_mime_type,
-        receipt_size,
-        receipt_data
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING
+      SELECT
         id,
+        legacy_expense_id,
         expense_date,
         category,
         description,
@@ -208,20 +299,10 @@ export const createExpenseSubmission = async (input: CreateExpenseSubmissionReco
         receipt_mime_type,
         receipt_size,
         created_at
+      FROM expense_submissions
+      WHERE id = $1
     `,
-    [
-      input.companyId,
-      input.employeeId,
-      input.date,
-      input.category,
-      input.description,
-      input.amount,
-      input.currency.toUpperCase(),
-      input.receiptFileName,
-      input.receiptMimeType,
-      input.receiptSize,
-      input.receiptData,
-    ],
+    [submissionId],
   );
 
   return mapExpenseSubmissionRow(result.rows[0]);
@@ -358,95 +439,12 @@ export const listPendingApprovalsForReviewer = async (
   reviewerId: number,
   reviewerRole: string,
 ) => {
-  await ensureExpenseSubmissionsTableExists();
   const normalizedRole = normalizeRole(reviewerRole);
 
   if (!canReviewExpenses(normalizedRole)) {
     return [];
   }
-
-  if (isAdminRole(normalizedRole)) {
-    const result = await pool.query<PendingApprovalRow>(
-      `
-        SELECT
-          es.id,
-          es.expense_date,
-          es.category,
-          es.description,
-          es.amount,
-          es.currency,
-          es.status,
-          es.receipt_file_name,
-          es.created_at,
-          u.id AS employee_id,
-          u.full_name AS employee_name,
-          u.email AS employee_email,
-          u.manager_id,
-          m.full_name AS manager_name
-        FROM expense_submissions es
-        JOIN users u
-          ON u.id = es.employee_id
-         AND u.company_id = es.company_id
-        LEFT JOIN users m
-          ON m.id = u.manager_id
-         AND m.company_id = u.company_id
-        WHERE es.company_id = $1
-          AND es.status = 'pending'
-          AND es.employee_id <> $2
-        ORDER BY es.created_at ASC
-      `,
-      [companyId, reviewerId],
-    );
-
-    return result.rows.map((row) => mapPendingApprovalRow(row, normalizedRole));
-  }
-
-  const result = await pool.query<PendingApprovalRow>(
-    `
-      WITH RECURSIVE scope AS (
-        SELECT rl.subordinate_id
-        FROM reporting_links rl
-        WHERE rl.company_id = $1
-          AND rl.supervisor_id = $2
-        UNION
-        SELECT rl.subordinate_id
-        FROM reporting_links rl
-        JOIN scope s
-          ON s.subordinate_id = rl.supervisor_id
-        WHERE rl.company_id = $1
-      )
-      SELECT
-        es.id,
-        es.expense_date,
-        es.category,
-        es.description,
-        es.amount,
-        es.currency,
-        es.status,
-        es.receipt_file_name,
-        es.created_at,
-        u.id AS employee_id,
-        u.full_name AS employee_name,
-        u.email AS employee_email,
-        u.manager_id,
-        m.full_name AS manager_name
-      FROM expense_submissions es
-      JOIN users u
-        ON u.id = es.employee_id
-       AND u.company_id = es.company_id
-      LEFT JOIN users m
-        ON m.id = u.manager_id
-       AND m.company_id = u.company_id
-      WHERE es.company_id = $1
-        AND es.status = 'pending'
-        AND es.employee_id <> $2
-        AND es.employee_id IN (SELECT subordinate_id FROM scope)
-      ORDER BY es.created_at ASC
-    `,
-    [companyId, reviewerId],
-  );
-
-  return result.rows.map((row) => mapPendingApprovalRow(row, normalizedRole));
+  return listPendingApprovalsForApprover(companyId, reviewerId);
 };
 
 export const resolvePendingApproval = async (
@@ -457,80 +455,29 @@ export const resolvePendingApproval = async (
   action: "approved" | "rejected",
   comment: string,
 ) => {
-  await ensureExpenseSubmissionsTableExists();
   const normalizedRole = normalizeRole(reviewerRole);
 
   if (!canReviewExpenses(normalizedRole)) {
     return null;
   }
-
-  if (isAdminRole(normalizedRole)) {
-    const result = await pool.query<ResolvedApprovalRow>(
-      `
-        UPDATE expense_submissions es
-           SET status = $3,
-               approval_comment = $4,
-               reviewed_by = $2,
-               reviewed_at = CURRENT_TIMESTAMP
-         WHERE es.company_id = $1
-           AND es.id = $5
-           AND es.status = 'pending'
-           AND es.employee_id <> $2
-        RETURNING es.id, es.status, es.approval_comment, es.reviewed_at
-      `,
-      [companyId, reviewerId, action, comment || null, expenseId],
-    );
-
-    if (result.rowCount === 0) {
-      return null;
-    }
-
-    return {
-      id: `EXP-${result.rows[0].id}`,
-      status: formatStatus(result.rows[0].status),
-      comment: result.rows[0].approval_comment ?? "",
-      reviewedAt: result.rows[0].reviewed_at,
-    };
-  }
-
-  const result = await pool.query<ResolvedApprovalRow>(
-    `
-      WITH RECURSIVE scope AS (
-        SELECT rl.subordinate_id
-        FROM reporting_links rl
-        WHERE rl.company_id = $1
-          AND rl.supervisor_id = $2
-        UNION
-        SELECT rl.subordinate_id
-        FROM reporting_links rl
-        JOIN scope s
-          ON s.subordinate_id = rl.supervisor_id
-        WHERE rl.company_id = $1
-      )
-      UPDATE expense_submissions es
-         SET status = $3,
-             approval_comment = $4,
-             reviewed_by = $2,
-             reviewed_at = CURRENT_TIMESTAMP
-       WHERE es.company_id = $1
-         AND es.id = $5
-         AND es.status = 'pending'
-         AND es.employee_id <> $2
-         AND es.employee_id IN (SELECT subordinate_id FROM scope)
-      RETURNING es.id, es.status, es.approval_comment, es.reviewed_at
-    `,
-    [companyId, reviewerId, action, comment || null, expenseId],
-  );
-
-  if (result.rowCount === 0) {
+  const numericApprovalId = Number(String(expenseId).replace(/^APR-/i, ""));
+  if (!Number.isFinite(numericApprovalId)) {
     return null;
   }
 
+  const result = await resolveApprovalDecision({
+    companyId,
+    approverId: reviewerId,
+    approvalId: numericApprovalId,
+    action,
+    comment,
+  });
+
   return {
-    id: `EXP-${result.rows[0].id}`,
-    status: formatStatus(result.rows[0].status),
-    comment: result.rows[0].approval_comment ?? "",
-    reviewedAt: result.rows[0].reviewed_at,
+    id: `APR-${numericApprovalId}`,
+    status: formatStatus(result.status),
+    comment,
+    reviewedAt: new Date().toISOString(),
   };
 };
 

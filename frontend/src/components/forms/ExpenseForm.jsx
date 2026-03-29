@@ -24,6 +24,13 @@ const ExpenseForm = () => {
   const [deviceCurrency, setDeviceCurrency] = useState('USD');
   const [deviceCountryName, setDeviceCountryName] = useState('');
   const [supportedCurrencies] = useState(expenseService.getSupportedCurrencies());
+  const [currencySearch, setCurrencySearch] = useState('');
+
+  const filteredCurrencies = useMemo(() => {
+    const q = currencySearch.trim().toUpperCase();
+    if (!q) return supportedCurrencies;
+    return supportedCurrencies.filter((cur) => cur.includes(q));
+  }, [supportedCurrencies, currencySearch]);
 
   const lowConfidenceFields = useMemo(() => {
     if (!aiExtraction) return new Set();
@@ -229,6 +236,16 @@ const ExpenseForm = () => {
               Expense Amount <span className="text-red-500">*</span>
             </label>
             <div className="flex relative items-stretch">
+              <div className="absolute -top-8 right-0 w-28">
+                <input
+                  type="text"
+                  value={currencySearch}
+                  onChange={(e) => setCurrencySearch(e.target.value)}
+                  placeholder="Search"
+                  disabled={isLoading || isOcrLoading}
+                  className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] uppercase tracking-wide text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
               <input
                 type="number"
                 step="0.01"
@@ -250,7 +267,7 @@ const ExpenseForm = () => {
                 disabled={isLoading || isOcrLoading}
                 className={`bg-slate-50 border text-slate-700 text-sm rounded-r-lg focus:ring-2 focus:ring-primary focus:border-primary focus:z-10 focus:outline-none transition-colors px-3 py-2 disabled:text-slate-400 ${inputBorder('currency')}`}
               >
-                {supportedCurrencies.map((cur) => (
+                {filteredCurrencies.map((cur) => (
                   <option key={cur} value={cur}>
                     {cur}
                   </option>

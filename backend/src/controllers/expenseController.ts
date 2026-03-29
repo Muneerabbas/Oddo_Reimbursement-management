@@ -22,7 +22,7 @@ function sendValidationError(res: Response, message: string): void {
 
 function parseExpenseId(rawExpenseId: string | string[] | undefined): number | null {
   const normalized = Array.isArray(rawExpenseId) ? rawExpenseId[0] : rawExpenseId;
-  const numericExpenseId = Number(normalized?.replace(/^EXP-/i, ""));
+  const numericExpenseId = Number(String(normalized || "").replace(/^[A-Z]+-/i, ""));
   return Number.isFinite(numericExpenseId) ? numericExpenseId : null;
 }
 
