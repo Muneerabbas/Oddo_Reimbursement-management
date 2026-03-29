@@ -1,14 +1,6 @@
 import apiClient from './apiClient';
 import loadingService from './loadingService';
 
-let mockPendingApprovals = [
-  { id: 'REQ-9901', employeeName: 'Sarah Jenkins', date: '2026-04-02', category: 'Software', description: 'Figma Annual Organization License', amount: 540.00, currency: 'USD', approvalStep: 'Step 1 of 2: Manager Review' },
-  { id: 'REQ-9902', employeeName: 'Marcus Reynolds', date: '2026-04-03', category: 'Travel', description: 'Client meeting flights (LHR)', amount: 1250.00, currency: 'GBP', approvalStep: 'Step 2 of 2: Finance Review' },
-  { id: 'REQ-9903', employeeName: 'Elena Rostova', date: '2026-04-04', category: 'Hardware', description: 'Replacement Macbook Pro Battery', amount: 189.99, currency: 'EUR', approvalStep: 'Step 1 of 2: Manager Review' },
-  { id: 'REQ-9904', employeeName: 'David Chen', date: '2026-03-31', category: 'Meals', description: 'Q1 Sales Team Celebration Dinner', amount: 840.50, currency: 'USD', approvalStep: 'Step 1 of 2: Manager Review' },
-  { id: 'REQ-9905', employeeName: 'Aisha Patel', date: '2026-04-01', category: 'Travel', description: 'Train fare to regional HQ', amount: 45.00, currency: 'GBP', approvalStep: 'Step 1 of 2: Manager Review' },
-];
-
 const expenseService = {
   /**
    * Fetch all expenses tied to the current user
@@ -163,9 +155,8 @@ const expenseService = {
    */
   getPendingApprovals: async () => {
     return loadingService.withGlobalLoading(async () => {
-      // Artificial 1 second network delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      return [...mockPendingApprovals];
+      const { data } = await apiClient.get('/expenses/approvals/pending');
+      return data.approvals || [];
     });
   },
 
@@ -175,15 +166,19 @@ const expenseService = {
    * @param {string} action - 'Approved' | 'Rejected'
    * @param {string} comment - Mandatory for rejection, optional for approval
    */
-  resolveApproval: async (id, action) => {
+  resolveApproval: async (id, action, comment = '') => {
     return loadingService.withGlobalLoading(async () => {
-      // Simulate API resolving latency
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Simulate visually removing it from our active local memory so the UI updates natively!
-      mockPendingApprovals = mockPendingApprovals.filter(req => req.id !== id);
-      
-      return { success: true, message: `Request ${id} successfully ${action.toLowerCase()}.` };
+      const normalizedAction = String(action || '').trim().toLowerCase();
+      if (normalizedAction !== 'approved' && normalizedAction !== 'rejected') {
+        throw new Error('Invalid approval action.');
+      }
+
+      const { data } = await apiClient.patch(`/expenses/${id}/approval`, {
+        action: normalizedAction,
+        comment: comment || '',
+      });
+
+      return data;
     });
   }
 }

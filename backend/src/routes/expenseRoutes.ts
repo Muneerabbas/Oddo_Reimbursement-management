@@ -4,6 +4,8 @@ import {
   createExpense,
   extractExpenseFromReceipt,
   listExpenses,
+  listPendingApprovals,
+  resolveExpenseApproval,
   viewExpenseDocument,
 } from "../controllers/expenseController";
 import { env } from "../config/env";
@@ -13,7 +15,9 @@ import { uploadExpenseReceipt } from "../middleware/expenseUpload";
 const router = Router();
 
 router.get("/expenses", requireAuth, listExpenses);
+router.get("/expenses/approvals/pending", requireAuth, listPendingApprovals);
 router.get("/expenses/:expenseId/document", requireAuth, viewExpenseDocument);
+router.patch("/expenses/:expenseId/approval", requireAuth, resolveExpenseApproval);
 
 router.post("/expenses", requireAuth, (req: Request, res: Response) => {
   uploadExpenseReceipt(req, res, (error) => {

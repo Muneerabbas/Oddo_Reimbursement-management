@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Inbox } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Funnel, Inbox, RefreshCw, Search, TimerReset, Wallet } from 'lucide-react';
 import expenseService from '../../services/expenseService';
 import ApprovalCard from '../../components/ui/ApprovalCard';
 import ApprovalModal from '../../components/ui/ApprovalModal';
@@ -8,118 +8,240 @@ import PageHeader from '../../components/ui/PageHeader';
 import EmptyState from '../../components/feedback/EmptyState';
 import { CardGridSkeleton } from '../../components/feedback/Skeleton';
 
+const formatCurrencyValue = (amount, currency = 'USD') => {
+  const numeric = Number(amount ?? 0);
+  const safeAmount = Number.isFinite(numeric) ? numeric : 0;
+
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+    }).format(safeAmount);
+  } catch {
+    return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency}`;
+  }
+};
+
 const Approvals = () => {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Modal tracking states
+  const [categoryFilter, setCategoryFilter] = useState('All');
   const [activeRequest, setActiveRequest] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    let unmounted = false;
-    const fetchApprovalsQueue = async () => {
-      try {
-        const queue = await expenseService.getPendingApprovals();
-        if (!unmounted) {
-           setPendingRequests(queue);
-           setIsLoading(false);
-        }
-      } catch (err) {
-         if (!unmounted) {
-            console.error("Queue Retrieval failed", err);
-            notificationService.error('Failed to load approval routing queue.');
-            setIsLoading(false);
-         }
-      }
-    };
-    fetchApprovalsQueue();
-    return () => { unmounted = true; };
-  }, []);
-
-  const handleResolveAction = async (id, action, comment) => {
-    // Validate rejections require comments
-    if (action === 'Rejected' && !comment.trim()) {
-       notificationService.error('You must provide reasoning for rejecting this claim.', { duration: 4000 });
-       return;
-    }
-
-    setIsProcessing(true);
-    const renderToastId = notificationService.loading(`Processing ${action.toLowerCase()}...`);
-
+  const fetchApprovalsQueue = async () => {
+    setIsLoading(true);
     try {
-       await expenseService.resolveApproval(id, action, comment);
-       
-       // Visual feedback slice
-       setPendingRequests(prev => prev.filter(req => req.id !== id));
-       setActiveRequest(null);
-       
-       notificationService.success(`Request successfully ${action.toLowerCase()}`, { id: renderToastId, duration: 3000 });
+      const queue = await expenseService.getPendingApprovals();
+      setPendingRequests(queue);
     } catch (err) {
-       console.error(err);
-       notificationService.error(`Architecture failed to log ${action} rule.`, { id: renderToastId });
+      console.error('Queue retrieval failed', err);
+      notificationService.error('Failed to load approval queue.');
     } finally {
-       setIsProcessing(false);
+      setIsLoading(false);
     }
   };
 
-  const filteredQueue = pendingRequests.filter(req => 
-     req.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     req.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    void fetchApprovalsQueue();
+  }, []);
+
+  const categories = useMemo(() => {
+    const values = [...new Set(pendingRequests.map((request) => request.category).filter(Boolean))];
+    return ['All', ...values];
+  }, [pendingRequests]);
+
+  const filteredQueue = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return pendingRequests.filter((request) => {
+      const categoryMatch = categoryFilter === 'All' || request.category === categoryFilter;
+      if (!query) {
+        return categoryMatch;
+      }
+      const searchable = [
+        request.id,
+        request.employeeName,
+        request.employeeEmail,
+        request.category,
+        request.description,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return categoryMatch && searchable.includes(query);
+    });
+  }, [pendingRequests, searchQuery, categoryFilter]);
+
+  const queueStats = useMemo(() => {
+    const totalsByCurrencyMap = new Map();
+    filteredQueue.forEach((request) => {
+      const amount = Number(request.amount ?? 0);
+      const safeAmount = Number.isFinite(amount) ? amount : 0;
+      const currency = request.currency || 'USD';
+      totalsByCurrencyMap.set(currency, (totalsByCurrencyMap.get(currency) || 0) + safeAmount);
+    });
+    const totalsByCurrency = [...totalsByCurrencyMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([currency, total]) => ({
+        currency,
+        total,
+      }));
+
+    const oldest = filteredQueue.length > 0
+      ? filteredQueue.reduce((oldestDate, item) => {
+        const current = new Date(item.date).getTime();
+        return current < oldestDate ? current : oldestDate;
+      }, new Date(filteredQueue[0].date).getTime())
+      : null;
+
+    return {
+      totalCount: filteredQueue.length,
+      totalsByCurrency,
+      oldest,
+    };
+  }, [filteredQueue]);
+
+  const handleResolveAction = async (id, action, comment) => {
+    if (action === 'Rejected' && !comment.trim()) {
+      notificationService.error('Add a rejection note so the employee can fix and resubmit.');
+      return;
+    }
+
+    setIsProcessing(true);
+    const toastId = notificationService.loading(`Processing ${action.toLowerCase()}...`);
+
+    try {
+      await expenseService.resolveApproval(id, action, comment);
+      setPendingRequests((prev) => prev.filter((request) => request.id !== id));
+      setActiveRequest(null);
+      notificationService.success(`Request ${id} ${action.toLowerCase()} successfully.`, { id: toastId });
+    } catch (err) {
+      console.error(err);
+      notificationService.error(err?.response?.data?.message || err.message || 'Unable to process approval.', { id: toastId });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleViewDocument = async (request) => {
+    try {
+      await expenseService.viewExpenseDocument(request.id);
+    } catch (err) {
+      console.error(err);
+      notificationService.error(err.message || 'Unable to open receipt document.');
+    }
+  };
 
   return (
     <div className="page-stack relative">
       <PageHeader
         title="Pending Approvals"
-        description="Review team reimbursement submissions mapped to your department workflow."
+        description="Review and resolve live reimbursement requests from your team."
+        actions={(
+          <button
+            type="button"
+            onClick={() => void fetchApprovalsQueue()}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+            Refresh Queue
+          </button>
+        )}
       />
 
-      {/* Utilities Ribbon */}
-      <div className="panel-card flex items-center justify-between p-4">
-         <div className="relative w-full sm:max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-               <Search size={18} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="panel-card p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Visible Requests</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">{queueStats.totalCount}</p>
+        </div>
+        <div className="panel-card p-4">
+          <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
+            <Wallet size={12} />
+            Value By Currency
+          </p>
+          {queueStats.totalsByCurrency.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {queueStats.totalsByCurrency.slice(0, 3).map((item) => (
+                <span key={item.currency} className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800">
+                  {formatCurrencyValue(item.total, item.currency)}
+                </span>
+              ))}
             </div>
-            <input 
-               type="text" 
-               placeholder="Filter queue by Name or ID..."
-               value={searchQuery}
-               onChange={(e) => setSearchQuery(e.target.value)}
-               disabled={isLoading}
-               className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm sm:text-base text-slate-700 bg-white"
-            />
-         </div>
+          ) : (
+            <p className="mt-2 text-2xl font-bold text-slate-900">-</p>
+          )}
+        </div>
+        <div className="panel-card p-4">
+          <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
+            <TimerReset size={12} />
+            Oldest Request
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {queueStats.oldest ? new Date(queueStats.oldest).toLocaleDateString() : '-'}
+          </p>
+        </div>
       </div>
 
-      {/* Core Workflow Grid Engine */}
-      {isLoading ? (
-         <CardGridSkeleton cards={6} />
-      ) : filteredQueue.length === 0 ? (
-         <EmptyState
-           icon={Inbox}
-           title="Inbox Zero Achieved"
-           description="You have successfully cleared the entire departmental queue."
-         />
-      ) : (
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-            {filteredQueue.map(request => (
-               <ApprovalCard 
-                  key={request.id} 
-                  request={request} 
-                  onClick={setActiveRequest}
-               />
+      <div className="panel-card flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+        <div className="relative w-full md:max-w-lg">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+            <Search size={16} />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by employee, request ID, category, or description..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            disabled={isLoading}
+            className="block w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-700 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-slate-50"
+          />
+        </div>
+
+        <div className="relative min-w-[190px]">
+          <Funnel size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <select
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm font-medium text-slate-700 outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
+          >
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category === 'All' ? 'All Categories' : category}
+              </option>
             ))}
-         </div>
+          </select>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <CardGridSkeleton cards={6} />
+      ) : filteredQueue.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title="Approval Queue Is Clear"
+          description="No matching pending requests right now."
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {filteredQueue.map((request) => (
+            <ApprovalCard
+              key={request.id}
+              request={request}
+              onClick={setActiveRequest}
+            />
+          ))}
+        </div>
       )}
 
-      {/* Deep Inspection Render Target */}
-      <ApprovalModal 
-         request={activeRequest}
-         onClose={() => setActiveRequest(null)}
-         onResolve={handleResolveAction}
-         isProcessing={isProcessing}
+      <ApprovalModal
+        request={activeRequest}
+        onClose={() => setActiveRequest(null)}
+        onResolve={handleResolveAction}
+        onViewDocument={handleViewDocument}
+        isProcessing={isProcessing}
       />
     </div>
   );

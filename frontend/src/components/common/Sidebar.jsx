@@ -26,7 +26,7 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
   const primaryNavItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, exact: true },
     ...(isEmployee ? [{ label: 'Submit Expense', path: '/expenses/new', icon: PlusCircle }] : []),
-    ...((isEmployee || isAdmin) ? [{ label: 'My Expenses', path: '/expenses', icon: List, exact: true }] : []),
+    ...((isEmployee || isAdmin) ? [{ label: 'Expenses', path: '/expenses', icon: List, exact: true }] : []),
   ];
 
   const workflowNavItems = [];
@@ -43,7 +43,7 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
 
   if (isAdmin) {
     adminNavItems.push({ label: 'Teams', path: '/teams', icon: UsersRound, exact: true });
-    adminNavItems.push({ label: 'User Management', path: '/admin/users', icon: Shield, exact: true });
+    // adminNavItems.push({ label: 'User Management', path: '/admin/users', icon: Shield, exact: true });
     adminNavItems.push({ label: 'Approval Rules', path: '/admin/approval-rules', icon: SlidersHorizontal, exact: true });
   }
 

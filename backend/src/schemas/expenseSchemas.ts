@@ -8,4 +8,15 @@ export const createExpenseSubmissionSchema = z.object({
   description: z.string().trim().min(1, "Business purpose description is required."),
 });
 
+export const resolveExpenseApprovalSchema = z
+  .object({
+    action: z.enum(["approved", "rejected", "Approved", "Rejected"]),
+    comment: z.string().trim().max(2000, "Comment must be 2000 characters or fewer.").optional(),
+  })
+  .transform((input) => ({
+    action: input.action.toLowerCase() as "approved" | "rejected",
+    comment: input.comment?.trim() ?? "",
+  }));
+
 export type CreateExpenseSubmissionInput = z.infer<typeof createExpenseSubmissionSchema>;
+export type ResolveExpenseApprovalInput = z.infer<typeof resolveExpenseApprovalSchema>;

@@ -1,43 +1,120 @@
-import loadingService from './loadingService';
+import expenseService from './expenseService';
 
-/**
- * Dashboard Service handling aggregate statistics
- */
+const CATEGORY_COLORS = [
+  'bg-primary',
+  'bg-emerald-500',
+  'bg-amber-500',
+  'bg-rose-500',
+  'bg-cyan-500',
+  'bg-indigo-500',
+];
+
+const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+
+const toNumericAmount = (amount) => {
+  const parsed = Number(amount ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getEventDate = (expense) => {
+  const value = expense?.createdAt || expense?.date;
+  const parsed = value ? new Date(value) : new Date();
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+};
+
+const toMonthKey = (date) => `${date.getFullYear()}-${date.getMonth() + 1}`;
+
+const buildMonthlyTotals = (expenses) => {
+  const totals = new Map();
+  for (const item of expenses) {
+    const date = getEventDate(item);
+    const key = toMonthKey(date);
+    totals.set(key, (totals.get(key) || 0) + toNumericAmount(item.amount));
+  }
+  return totals;
+};
+
 const dashboardService = {
-  /**
-   * Fetch aggregate statistics for the user's dashboard view.
-   * Currently mocked to bypass the missing backend implementation.
-   */
   getDashboardStats: async () => {
-    return loadingService.withGlobalLoading(async () => {
-      // In a real application we would call:
-      // const response = await apiClient.get('/dashboard/stats');
-      // return response.data;
+    const expenses = await expenseService.getExpenses();
+    const sortedExpenses = [...expenses].sort(
+      (a, b) => getEventDate(b).getTime() - getEventDate(a).getTime(),
+    );
 
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
+    let pendingCount = 0;
+    let rejectedCount = 0;
+    let approvedAmount = 0;
+    let pendingAmount = 0;
+    let rejectedAmount = 0;
+    const categoryTotals = new Map();
 
-      // Simulated API response shape
-      return {
-        totalSubmitted: 24,
-        pendingApprovals: 6,
-        approvedAmount: 4320.50, // Stored as numeric cleanly
-        rejectedCount: 2,
-        recentActivity: [
-          { id: 'EXP-1045', date: '2026-03-28T09:12:00Z', category: 'Software', description: 'GitHub Copilot Annual', amount: 120, currency: 'USD', status: 'Pending' },
-          { id: 'EXP-1044', date: '2026-03-25T14:30:00Z', category: 'Travel', description: 'Uber to Airport', amount: 45.50, currency: 'USD', status: 'Approved' },
-          { id: 'EXP-1043', date: '2026-03-24T18:00:00Z', category: 'Meals', description: 'Client Dinner with XYZ Corp', amount: 154.00, currency: 'USD', status: 'Rejected' },
-          { id: 'EXP-1042', date: '2026-03-20T10:15:00Z', category: 'Office Supplies', description: 'Ergonomic Keyboard', amount: 199.99, currency: 'USD', status: 'Approved' },
-          { id: 'EXP-1041', date: '2026-03-18T11:45:00Z', category: 'Travel', description: 'Flight to NYC Conference', amount: 450.00, currency: 'USD', status: 'Approved' },
-        ],
-        categoryBreakdown: [
-          { name: 'Travel', value: 2450.00, color: 'bg-primary' },
-          { name: 'Software', value: 850.50, color: 'bg-emerald-500' },
-          { name: 'Meals', value: 640.00, color: 'bg-amber-500' },
-          { name: 'Office Supplies', value: 380.00, color: 'bg-purple-500' },
-        ]
-      };
-    });
+    for (const item of sortedExpenses) {
+      const amount = toNumericAmount(item.amount);
+      const status = normalizeStatus(item.status);
+      const category = item.category || 'Other';
+
+      if (status === 'pending') pendingCount += 1;
+      if (status === 'rejected') rejectedCount += 1;
+      if (status === 'approved' || status === 'paid') approvedAmount += amount;
+      if (status === 'pending') pendingAmount += amount;
+      if (status === 'rejected') rejectedAmount += amount;
+
+      categoryTotals.set(category, (categoryTotals.get(category) || 0) + amount);
+    }
+
+    const categoryBreakdown = [...categoryTotals.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name, value], index) => ({
+        name,
+        value,
+        color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+      }));
+
+    const monthlyTotals = buildMonthlyTotals(sortedExpenses);
+    const now = new Date();
+    const currentMonthKey = toMonthKey(now);
+    const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const previousMonthKey = toMonthKey(prevMonthDate);
+    const currentMonthAmount = monthlyTotals.get(currentMonthKey) || 0;
+    const previousMonthAmount = monthlyTotals.get(previousMonthKey) || 0;
+    const monthOverMonthDelta = currentMonthAmount - previousMonthAmount;
+    const monthOverMonthDeltaPercent = previousMonthAmount > 0
+      ? Math.round((monthOverMonthDelta / previousMonthAmount) * 100)
+      : null;
+
+    const totalAmount = sortedExpenses.reduce((sum, item) => sum + toNumericAmount(item.amount), 0);
+    const averageClaimAmount = sortedExpenses.length > 0 ? totalAmount / sortedExpenses.length : 0;
+
+    return {
+      totalSubmitted: sortedExpenses.length,
+      pendingApprovals: pendingCount,
+      approvedAmount,
+      rejectedCount,
+      recentActivity: sortedExpenses.slice(0, 20),
+      categoryBreakdown,
+      insights: {
+        totalAmount,
+        averageClaimAmount,
+        pendingAmount,
+        rejectedAmount,
+        currentMonthAmount,
+        previousMonthAmount,
+        monthOverMonthDelta,
+        monthOverMonthDeltaPercent,
+        mostRecentExpenseDate:
+          sortedExpenses.length > 0 ? getEventDate(sortedExpenses[0]).toISOString() : null,
+      },
+      statusSummary: {
+        approved: sortedExpenses.filter((item) => {
+          const status = normalizeStatus(item.status);
+          return status === 'approved' || status === 'paid';
+        }).length,
+        pending: pendingCount,
+        rejected: rejectedCount,
+      },
+      lastUpdatedAt: new Date().toISOString(),
+    };
   },
 };
 

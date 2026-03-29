@@ -2,16 +2,32 @@ import type { Request, Response } from "express";
 import multer from "multer";
 import { ZodError } from "zod";
 import axios from "axios";
-import { createExpenseSubmissionSchema } from "../schemas/expenseSchemas";
+import {
+  createExpenseSubmissionSchema,
+  resolveExpenseApprovalSchema,
+} from "../schemas/expenseSchemas";
 import {
   createExpenseSubmission,
-  getExpenseSubmissionDocument,
+  getExpenseSubmissionDocumentForViewer,
+  listPendingApprovalsForReviewer,
   listExpenseSubmissionsForUser,
+  resolvePendingApproval,
 } from "../services/expenseSubmissionService";
 import { extractExpenseDataWithAi } from "../services/aiExpenseExtractionService";
 
 function sendValidationError(res: Response, message: string): void {
   res.status(400).json({ message });
+}
+
+function parseExpenseId(rawExpenseId: string | string[] | undefined): number | null {
+  const normalized = Array.isArray(rawExpenseId) ? rawExpenseId[0] : rawExpenseId;
+  const numericExpenseId = Number(normalized?.replace(/^EXP-/i, ""));
+  return Number.isFinite(numericExpenseId) ? numericExpenseId : null;
+}
+
+function isReviewerRole(role: string | undefined): boolean {
+  const normalizedRole = String(role || "").trim().toLowerCase();
+  return normalizedRole === "admin" || normalizedRole === "manager";
 }
 
 export async function createExpense(req: Request, res: Response): Promise<void> {
@@ -130,6 +146,84 @@ export async function listExpenses(req: Request, res: Response): Promise<void> {
   }
 }
 
+export async function listPendingApprovals(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.auth) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
+    }
+
+    if (!isReviewerRole(req.auth.role)) {
+      res.status(403).json({ message: "Manager or admin access required." });
+      return;
+    }
+
+    const approvals = await listPendingApprovalsForReviewer(
+      req.auth.companyId,
+      req.auth.userId,
+      req.auth.role,
+    );
+
+    res.json({ approvals });
+  } catch (error) {
+    console.error("listPendingApprovals", error);
+    res.status(500).json({ message: "Could not load approval queue." });
+  }
+}
+
+export async function resolveExpenseApproval(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.auth) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
+    }
+
+    if (!isReviewerRole(req.auth.role)) {
+      res.status(403).json({ message: "Manager or admin access required." });
+      return;
+    }
+
+    const numericExpenseId = parseExpenseId(req.params.expenseId);
+    if (!numericExpenseId) {
+      res.status(400).json({ message: "Invalid expense id." });
+      return;
+    }
+
+    const body = resolveExpenseApprovalSchema.parse(req.body);
+    if (body.action === "rejected" && body.comment.trim() === "") {
+      sendValidationError(res, "A comment is required when rejecting an expense.");
+      return;
+    }
+
+    const approval = await resolvePendingApproval(
+      req.auth.companyId,
+      req.auth.userId,
+      req.auth.role,
+      numericExpenseId,
+      body.action,
+      body.comment,
+    );
+
+    if (!approval) {
+      res.status(404).json({ message: "Approval item not found, inaccessible, or already processed." });
+      return;
+    }
+
+    res.json({
+      approval,
+      message: `Expense ${approval.id} marked as ${approval.status.toLowerCase()}.`,
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      sendValidationError(res, error.issues[0]?.message ?? "Validation failed.");
+      return;
+    }
+
+    console.error("resolveExpenseApproval", error);
+    res.status(500).json({ message: "Could not resolve approval." });
+  }
+}
+
 export async function viewExpenseDocument(req: Request, res: Response): Promise<void> {
   try {
     if (!req.auth) {
@@ -137,19 +231,16 @@ export async function viewExpenseDocument(req: Request, res: Response): Promise<
       return;
     }
 
-    const rawExpenseId = Array.isArray(req.params.expenseId)
-      ? req.params.expenseId[0]
-      : req.params.expenseId;
-    const numericExpenseId = Number(rawExpenseId?.replace(/^EXP-/i, ""));
-
-    if (!Number.isFinite(numericExpenseId)) {
+    const numericExpenseId = parseExpenseId(req.params.expenseId);
+    if (!numericExpenseId) {
       res.status(400).json({ message: "Invalid expense id." });
       return;
     }
 
-    const document = await getExpenseSubmissionDocument(
+    const document = await getExpenseSubmissionDocumentForViewer(
       req.auth.companyId,
       req.auth.userId,
+      req.auth.role,
       numericExpenseId,
     );
 
