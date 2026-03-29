@@ -33,7 +33,7 @@ type ExpenseDocumentRow = {
 
 let ensureExpenseSubmissionsTablePromise: Promise<void> | null = null;
 
-const ensureExpenseSubmissionsTableExists = async (): Promise<void> => {
+export const ensureExpenseSubmissionsTableExists = async (): Promise<void> => {
   if (!ensureExpenseSubmissionsTablePromise) {
     ensureExpenseSubmissionsTablePromise = pool
       .query(`

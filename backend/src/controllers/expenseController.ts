@@ -1,12 +1,14 @@
 import type { Request, Response } from "express";
 import multer from "multer";
 import { ZodError } from "zod";
+import axios from "axios";
 import { createExpenseSubmissionSchema } from "../schemas/expenseSchemas";
 import {
   createExpenseSubmission,
   getExpenseSubmissionDocument,
   listExpenseSubmissionsForUser,
 } from "../services/expenseSubmissionService";
+import { extractExpenseDataWithAi } from "../services/aiExpenseExtractionService";
 
 function sendValidationError(res: Response, message: string): void {
   res.status(400).json({ message });
@@ -61,6 +63,55 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
     }
 
     res.status(500).json({ message: "Could not submit expense." });
+  }
+}
+
+export async function extractExpenseFromReceipt(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.auth) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
+    }
+
+    if (!req.file) {
+      sendValidationError(res, "Receipt file is required.");
+      return;
+    }
+
+    const extracted = await extractExpenseDataWithAi({
+      companyId: req.auth.companyId,
+      employeeId: req.auth.userId,
+      fileName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      fileBuffer: req.file.buffer,
+    });
+
+    res.json({
+      extraction: extracted,
+      suggestedExpense: {
+        amount: extracted.amount.value,
+        currency: extracted.currency.value,
+        date: extracted.date.value,
+        category: extracted.category.value,
+        description: extracted.description.value,
+        vendor: extracted.vendor.value,
+      },
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const code = error.code || "OCR_AI_REQUEST_FAILED";
+      const detail =
+        (typeof error.response?.data?.ErrorMessage === "string" && error.response?.data?.ErrorMessage) ||
+        error.response?.data?.message ||
+        error.message;
+      res.status(502).json({ message: `Receipt extraction service error (${code}): ${detail}` });
+      return;
+    }
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: "Could not extract receipt details." });
   }
 }
 

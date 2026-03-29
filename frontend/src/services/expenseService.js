@@ -119,25 +119,43 @@ const expenseService = {
     });
   },
 
-  /**
-   * Mock functionality for an impending OCR backend model integration
-   * Extracts generic values from a file upload mimicking AI processing
-   * @param {File} file 
-   */
-  simulateOCRScan: async () => {
+  extractExpenseFromReceipt: async (file) => {
     return loadingService.withGlobalLoading(async () => {
-      // Simulate a heavier ML processing latency
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-      
-      // Return dummy data struct that the UI form will consume to auto-fill
-      return {
-         amount: '142.50',
-         date: new Date().toISOString().split('T')[0],
-         category: 'Meals',
-         description: 'Automated Extraction from Receipt scan',
-         currency: 'USD'
-      };
+      if (!file) {
+        throw new Error('Please upload a receipt file before extraction.');
+      }
+      const payload = new FormData();
+      payload.append('bill', file);
+      try {
+        const { data } = await apiClient.post('/expenses/extract', payload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        return data;
+      } catch (err) {
+        const backendMessage = err?.response?.data?.message;
+        if (backendMessage) {
+          throw new Error(backendMessage);
+        }
+        if (err?.message) {
+          throw new Error(`Extraction failed: ${err.message}`);
+        }
+        throw new Error('Extraction failed due to a network or server error.');
+      }
     });
+  },
+
+  simulateOCRScan: async (file) => {
+    const data = await expenseService.extractExpenseFromReceipt(file);
+    const suggestion = data?.suggestedExpense || {};
+    return {
+      amount: suggestion.amount != null ? String(suggestion.amount) : '',
+      date: suggestion.date || new Date().toISOString().split('T')[0],
+      category: suggestion.category || '',
+      description: suggestion.description || '',
+      currency: suggestion.currency || 'USD',
+    };
   },
 
   /**

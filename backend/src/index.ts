@@ -6,6 +6,10 @@ import { createApp } from "./app";
 
 const app = createApp();
 
+console.log(
+  `AI extraction readiness: OCR_SPACE_API_KEY=${env.ocrSpaceApiKey ? "set" : "missing"}, GEMINI_API_KEY=${env.geminiApiKey ? "set" : "missing"}`,
+);
+
 const startServer = async (): Promise<void> => {
   try {
     await testDbConnection();

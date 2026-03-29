@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UploadCloud, ScanLine, Loader2, CheckCircle2, Image as ImageIcon } from 'lucide-react';
 import expenseService from '../../services/expenseService';
 import notificationService from '../../services/notificationService';
@@ -19,6 +20,7 @@ const WORKFLOW_STEPS = [
 ];
 
 const ScanReceipt = () => {
+  const navigate = useNavigate();
   const [workflowStep, setWorkflowStep] = useState('upload');
   const [receiptFile, setReceiptFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -102,6 +104,20 @@ const ScanReceipt = () => {
   const handleExtractedChange = (event) => {
     const { name, value } = event.target;
     setExtractedData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const continueToSubmit = () => {
+    navigate('/expenses/new', {
+      state: {
+        prefillExpense: {
+          amount: extractedData.amount || '',
+          date: extractedData.date || DEFAULT_EXTRACTED_DATA.date,
+          category: extractedData.category || '',
+          description: extractedData.description || '',
+          currency: extractedData.currency || 'USD',
+        },
+      },
+    });
   };
 
   return (
@@ -297,6 +313,17 @@ const ScanReceipt = () => {
                 />
               </div>
             </form>
+
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={continueToSubmit}
+                disabled={workflowStep !== 'complete'}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Continue To Submit Expense
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -305,4 +332,3 @@ const ScanReceipt = () => {
 };
 
 export default ScanReceipt;
-
