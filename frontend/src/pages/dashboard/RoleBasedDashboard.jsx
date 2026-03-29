@@ -7,11 +7,12 @@ const RoleBasedDashboard = () => {
   const { user } = useAuth();
   const normalizedRole = typeof user?.role === 'string' ? user.role.toLowerCase() : '';
 
-  if (normalizedRole === 'employee') {
-    return <EmployeeDashboard />;
+  if (normalizedRole === 'admin' || normalizedRole === 'manager') {
+    return <DashboardHome />;
   }
 
-  return <DashboardHome />;
+  // Default every non-admin/manager user to the employee dashboard.
+  return <EmployeeDashboard />;
 };
 
 export default RoleBasedDashboard;

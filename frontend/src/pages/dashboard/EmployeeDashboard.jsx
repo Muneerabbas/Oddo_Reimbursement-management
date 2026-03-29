@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
+  AlertTriangle,
   CheckCircle2,
   Clock3,
   FileText,
   Plus,
   Upload,
   Wallet,
-  XCircle,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import EmptyState from '../../components/feedback/EmptyState';
@@ -16,6 +16,13 @@ import PageHeader from '../../components/ui/PageHeader';
 import StatCard from '../../components/ui/StatCard';
 import ExpenseTable from '../../components/ui/ExpenseTable';
 import dashboardService from '../../services/dashboardService';
+
+const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+
+const getExpenseAmount = (expense) => {
+  const numeric = Number(expense?.amount ?? 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
 
 const formatCurrencyValue = (amount, currency = 'USD') => {
   const numeric = typeof amount === 'number' ? amount : Number(amount || 0);
@@ -33,6 +40,7 @@ const formatCurrencyValue = (amount, currency = 'USD') => {
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,8 +77,58 @@ const EmployeeDashboard = () => {
 
   const firstName = useMemo(() => user?.name?.split(' ')?.[0] || 'there', [user?.name]);
   const userCurrency = user?.company?.defaultCurrency || 'USD';
-  const recentActivity = stats?.recentActivity || [];
-  const pendingExpenses = recentActivity.filter((item) => item.status === 'Pending');
+  const recentActivity = useMemo(() => stats?.recentActivity || [], [stats?.recentActivity]);
+
+  const summary = useMemo(() => {
+    const hasActivity = recentActivity.length > 0;
+    const pendingClaims = [];
+    const approvedClaims = [];
+    const rejectedClaims = [];
+    const categoryTotals = new Map();
+
+    for (const expense of recentActivity) {
+      const normalized = normalizeStatus(expense.status);
+      const amount = getExpenseAmount(expense);
+
+      if (normalized === 'approved') {
+        approvedClaims.push(expense);
+      } else if (normalized === 'rejected') {
+        rejectedClaims.push(expense);
+      } else {
+        pendingClaims.push(expense);
+      }
+
+      const category = expense.category || 'Other';
+      categoryTotals.set(category, (categoryTotals.get(category) || 0) + amount);
+    }
+
+    const reimbursedAmount = hasActivity
+      ? approvedClaims.reduce((sum, item) => sum + getExpenseAmount(item), 0)
+      : Number(stats?.approvedAmount || 0);
+    const reimbursementDue = pendingClaims.reduce((sum, item) => sum + getExpenseAmount(item), 0);
+    const totalTrackedValue = [...categoryTotals.values()].reduce((sum, value) => sum + value, 0);
+
+    const topCategories = [...categoryTotals.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percentage: totalTrackedValue > 0 ? Math.round((value / totalTrackedValue) * 100) : 0,
+      }));
+
+    return {
+      totalClaims: hasActivity ? recentActivity.length : (stats?.totalSubmitted ?? 0),
+      pendingCount: hasActivity ? pendingClaims.length : (stats?.pendingApprovals ?? 0),
+      rejectedCount: hasActivity ? rejectedClaims.length : (stats?.rejectedCount ?? 0),
+      reimbursedAmount,
+      reimbursementDue,
+      pendingPreview: pendingClaims.slice(0, 4),
+      topCategories,
+    };
+  }, [recentActivity, stats]);
+
+  const openExpenses = () => navigate('/expenses');
 
   if (isLoading) {
     return (
@@ -97,7 +155,7 @@ const EmployeeDashboard = () => {
     <div className="page-stack">
       <PageHeader
         title={`Welcome, ${firstName}`}
-        description="Track your reimbursements, upload receipts, and submit new expenses quickly."
+        description="Track your personal claims, submit receipts, and follow reimbursement progress."
         actions={(
           <div className="flex flex-wrap items-center gap-3">
             <Link
@@ -120,34 +178,34 @@ const EmployeeDashboard = () => {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
         <StatCard
-          title="Submitted"
-          value={stats.totalSubmitted ?? 0}
+          title="My Claims"
+          value={summary.totalClaims}
           icon={<FileText size={22} className="text-slate-500" />}
-          description="Lifetime requests"
+          description="Submitted by you"
         />
 
         <StatCard
-          title="Pending"
-          value={stats.pendingApprovals ?? 0}
+          title="Awaiting Approval"
+          value={summary.pendingCount}
           valueColorClass="text-amber-600"
           icon={<Clock3 size={22} className="text-amber-500" />}
-          description="Waiting on approval"
+          description="In review"
         />
 
         <StatCard
-          title="Approved Value"
-          value={formatCurrencyValue(stats.approvedAmount || 0, userCurrency)}
+          title="Reimbursed"
+          value={formatCurrencyValue(summary.reimbursedAmount, userCurrency)}
           valueColorClass="text-emerald-600"
-          icon={<Wallet size={22} className="text-emerald-500" />}
-          description={`Base currency: ${userCurrency}`}
+          icon={<CheckCircle2 size={22} className="text-emerald-500" />}
+          description="Approved payouts"
         />
 
         <StatCard
-          title="Rejected"
-          value={stats.rejectedCount ?? 0}
-          valueColorClass="text-red-600"
-          icon={<XCircle size={22} className="text-red-500" />}
-          description="Requires resubmission"
+          title="To Be Reimbursed"
+          value={formatCurrencyValue(summary.reimbursementDue, userCurrency)}
+          valueColorClass="text-blue-600"
+          icon={<Wallet size={22} className="text-blue-500" />}
+          description="Still pending"
         />
       </div>
 
@@ -159,35 +217,68 @@ const EmployeeDashboard = () => {
             currentPage={currentPage}
             rowsPerPage={rowsPerPage}
             onPageChange={setCurrentPage}
-            onRowClick={() => {}}
-            onViewDocument={() => {}}
+            onRowClick={openExpenses}
+            onViewDocument={openExpenses}
           />
         </section>
 
         <aside className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-800">Action Required</h2>
+          <h2 className="text-lg font-semibold text-slate-800">Employee Actions</h2>
+
           <div className="panel-card space-y-3 p-4">
-            {pendingExpenses.length > 0 ? (
-              pendingExpenses.slice(0, 4).map((expense) => (
-                <div key={expense.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-amber-900">{expense.id}</span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-amber-700">
-                      <Clock3 size={12} />
-                      Pending
-                    </span>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="font-semibold">Awaiting approval: {summary.pendingCount}</p>
+              <p className="mt-1 text-amber-700">Track these in your expense history.</p>
+            </div>
+
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+              <p className="flex items-center gap-1 font-semibold">
+                <AlertTriangle size={15} />
+                Needs update: {summary.rejectedCount}
+              </p>
+              <p className="mt-1 text-rose-700">Rejected claims can be corrected and resubmitted.</p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Link to="/expenses" className="text-sm font-medium text-primary hover:underline">
+                Review my claims
+              </Link>
+              <Link to="/expenses/new" className="text-sm font-medium text-primary hover:underline">
+                Submit a new claim
+              </Link>
+            </div>
+
+            {summary.pendingPreview.length > 0 && (
+              <div className="space-y-2 border-t border-slate-200 pt-3">
+                {summary.pendingPreview.map((expense) => (
+                  <div key={expense.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-slate-800">{expense.id}</span>
+                      <span className="text-xs font-medium text-amber-700">Pending</span>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">{expense.description}</p>
                   </div>
-                  <p className="mt-1 text-sm text-amber-800">{expense.description}</p>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="panel-card space-y-3 p-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Top Categories</h3>
+            {summary.topCategories.length > 0 ? (
+              summary.topCategories.map((item) => (
+                <div key={item.name}>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="font-medium text-slate-700">{item.name}</span>
+                    <span className="text-slate-600">{formatCurrencyValue(item.value, userCurrency)}</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-2 rounded-full bg-primary" style={{ width: `${item.percentage}%` }} />
+                  </div>
                 </div>
               ))
             ) : (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                <p className="flex items-center gap-2 font-semibold">
-                  <CheckCircle2 size={16} />
-                  No pending expense actions.
-                </p>
-                <p className="mt-1">You are fully up to date.</p>
-              </div>
+              <p className="text-sm text-slate-500">No category data available yet.</p>
             )}
           </div>
         </aside>

@@ -14,6 +14,10 @@ import {
 
 const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
   const { role } = useAuth(); // Destructure role for conditional rendering
+  const normalizedRole = typeof role === 'string' ? role.toLowerCase() : '';
+  const isAdmin = normalizedRole === 'admin';
+  const isManager = normalizedRole === 'manager';
+  const isEmployee = normalizedRole === 'employee' || (!isAdmin && !isManager);
 
   // Professional active/inactive styling for navigation links
   const baseLinkClasses = "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm";
@@ -23,16 +27,16 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
   // Map out standard navigation logic cleanly
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
-    ...(role === 'employee' ? [{ label: 'Submit Expense', path: '/expenses/new', icon: <PlusCircle size={20} /> }] : []),
+    ...(isEmployee ? [{ label: 'Submit Expense', path: '/expenses/new', icon: <PlusCircle size={20} /> }] : []),
     { label: 'My Expenses', path: '/expenses', icon: <List size={20} /> },
   ];
 
-  if (role === 'manager' || role === 'admin') {
+  if (isManager || isAdmin) {
     navItems.push({ label: 'Approvals', path: '/approvals', icon: <CheckSquare size={20} /> });
   }
 
   // Insert Admin specific panel conditionally
-  if (role === 'admin') {
+  if (isAdmin) {
     navItems.push({ label: 'Teams', path: '/teams', icon: <UsersRound size={20} /> });
     navItems.push({ label: 'User Management', path: '/admin/users', icon: <Shield size={20} /> });
     navItems.push({ label: 'Approval Rules', path: '/admin/approval-rules', icon: <SlidersHorizontal size={20} /> });
