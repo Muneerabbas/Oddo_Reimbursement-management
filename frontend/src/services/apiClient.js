@@ -7,8 +7,10 @@ import {
   setAuthTokens,
 } from '../utils/authStorage';
 
+export const AUTH_SESSION_EXPIRED_EVENT = 'auth:logout';
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,7 +21,7 @@ let refreshQueue = [];
 
 const notifyLoggedOut = () => {
   clearAuthStorage();
-  window.dispatchEvent(new CustomEvent('auth:logout'));
+  window.dispatchEvent(new CustomEvent(AUTH_SESSION_EXPIRED_EVENT));
 };
 
 const processRefreshQueue = (error, accessToken = null) => {
@@ -42,14 +44,11 @@ const refreshAccessToken = async () => {
   const response = await axios.post(
     `${apiClient.defaults.baseURL}/auth/refresh`,
     { refreshToken },
-    {
-      headers: { 'Content-Type': 'application/json' },
-    },
+    { headers: { 'Content-Type': 'application/json' } },
   );
 
   const payload = response?.data || {};
   const accessToken = payload.accessToken || payload.token;
-
   if (!accessToken) {
     throw new Error('Refresh token request did not return an access token.');
   }
@@ -62,7 +61,6 @@ const refreshAccessToken = async () => {
   return accessToken;
 };
 
-// Request interceptor to add the auth token if available
 apiClient.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
@@ -82,10 +80,9 @@ apiClient.interceptors.request.use(
       loadingService.stopLoading();
     }
     return Promise.reject(error);
-  }
+  },
 );
 
-// Response interceptor to handle common errors like 401 Unauthorized
 apiClient.interceptors.response.use(
   (response) => {
     if (response.config?.__loaderStarted) {
@@ -116,12 +113,11 @@ apiClient.interceptors.response.use(
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           refreshQueue.push({ resolve, reject });
-        })
-          .then((newToken) => {
-            originalRequest.headers = originalRequest.headers || {};
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return apiClient(originalRequest);
-          });
+        }).then((newToken) => {
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return apiClient(originalRequest);
+        });
       }
 
       originalRequest._retry = true;
@@ -133,7 +129,6 @@ apiClient.interceptors.response.use(
 
         originalRequest.headers = originalRequest.headers || {};
         originalRequest.headers.Authorization = `Bearer ${refreshedAccessToken}`;
-
         return apiClient(originalRequest);
       } catch (refreshError) {
         processRefreshQueue(refreshError, null);

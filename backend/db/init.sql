@@ -2,8 +2,23 @@ CREATE TABLE IF NOT EXISTS companies (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   default_currency VARCHAR(3) NOT NULL DEFAULT 'INR',
+  country_code CHAR(2),
+  about TEXT,
+  website VARCHAR(500),
+  industry VARCHAR(200),
+  phone VARCHAR(50),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   admin_user_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS company_roles (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  base_role VARCHAR(20) NOT NULL CHECK (base_role IN ('employee', 'manager')),
+  permissions JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT company_roles_company_name_unique UNIQUE (company_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -14,6 +29,7 @@ CREATE TABLE IF NOT EXISTS users (
   full_name VARCHAR(255) NOT NULL,
   role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'manager', 'employee', 'finance', 'auditor')),
   manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  company_role_id INTEGER REFERENCES company_roles(id) ON DELETE SET NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -95,6 +111,8 @@ CREATE TABLE IF NOT EXISTS bills (
 
 CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id);
 CREATE INDEX IF NOT EXISTS idx_users_manager_id ON users(manager_id);
+CREATE INDEX IF NOT EXISTS idx_users_company_role_id ON users(company_role_id);
+CREATE INDEX IF NOT EXISTS idx_company_roles_company_id ON company_roles(company_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_company_id ON expenses(company_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_employee_id ON expenses(employee_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_status ON expenses(status);

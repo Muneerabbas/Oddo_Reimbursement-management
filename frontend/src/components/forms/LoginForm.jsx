@@ -32,11 +32,11 @@ const LoginForm = () => {
       navigate('/dashboard', { replace: true });
     } catch (err) {
       if (err.response?.status === 401) {
-        setError('Invalid credentials provided.');
+         setError('Invalid credentials provided.');
       } else if (err.code === 'ERR_NETWORK') {
         setError('Cannot reach authentication server. Is your backend running?');
       } else {
-        setError(err.response?.data?.message || 'An unexpected server error occurred.');
+         setError(err.response?.data?.message || 'An unexpected server error occurred.');
       }
     } finally {
       setIsLoading(false);

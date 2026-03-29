@@ -1,14 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { 
-  LayoutDashboard, 
-  PlusCircle, 
-  List, 
-  CheckSquare, 
+import {
+  LayoutDashboard,
+  PlusCircle,
+  List,
+  CheckSquare,
   SlidersHorizontal,
-  Shield, 
-  X 
+  Shield,
+  UsersRound,
+  X,
 } from 'lucide-react';
 
 const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
@@ -32,6 +33,7 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
 
   // Insert Admin specific panel conditionally
   if (role === 'admin') {
+    navItems.push({ label: 'Teams', path: '/teams', icon: <UsersRound size={20} /> });
     navItems.push({ label: 'User Management', path: '/admin/users', icon: <Shield size={20} /> });
     navItems.push({ label: 'Approval Rules', path: '/admin/approval-rules', icon: <SlidersHorizontal size={20} /> });
   }

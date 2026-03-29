@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useEffect, useState } from 'react';
+import { AUTH_SESSION_EXPIRED_EVENT } from '../services/apiClient';
 import {
   clearAuthStorage,
   getAccessToken,
@@ -8,7 +9,6 @@ import {
   setStoredUser,
 } from '../utils/authStorage';
 
-// Create the unified Authentication Context
 export const AuthContext = createContext({
   user: null,
   role: null,
@@ -20,13 +20,23 @@ export const AuthContext = createContext({
 });
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const storedToken = getAccessToken();
+    const parsedUser = getStoredUser();
 
-  /**
-   * Wipes LocalStorage and clears State to secure layout exit
-   */
+    if (storedToken && parsedUser) {
+      return parsedUser;
+    }
+
+    if (storedToken && !parsedUser) {
+      clearAuthStorage();
+    }
+
+    return null;
+  });
+  const [role, setRole] = useState(() => user?.role || null);
+  const [isLoading] = useState(false);
+
   const logoutUser = useCallback(() => {
     clearAuthStorage();
     setUser(null);
@@ -34,41 +44,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // Check for an existing token and hydrate the state on load
-    const initializeAuth = () => {
-      const storedToken = getAccessToken();
-      const parsedUser = getStoredUser();
-      
-      if (storedToken && parsedUser) {
-        setUser(parsedUser);
-        setRole(parsedUser.role || null);
-      } else if (storedToken && !parsedUser) {
-        logoutUser();
-      }
-
-      setIsLoading(false);
-    };
-
-    initializeAuth();
+    const onSessionExpired = () => logoutUser();
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, onSessionExpired);
+    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, onSessionExpired);
   }, [logoutUser]);
 
-  useEffect(() => {
-    const handleSessionLogout = () => {
-      logoutUser();
-    };
-
-    window.addEventListener('auth:logout', handleSessionLogout);
-    return () => {
-      window.removeEventListener('auth:logout', handleSessionLogout);
-    };
-  }, [logoutUser]);
-
-  /**
-   * Stores the structured auth context data inside LocalStorage and React State
-   * Call this explicitly from your LoginForm component
-   * @param {Object} userData - Database mapped user details
-   * @param {string|Object} tokenData - Access token string or token object
-   */
   const loginUser = useCallback((userData, tokenData) => {
     const accessToken = typeof tokenData === 'string'
       ? tokenData
@@ -80,17 +60,17 @@ export const AuthProvider = ({ children }) => {
     if (accessToken) {
       setAuthTokens({ accessToken, refreshToken });
     }
+
     setStoredUser(userData);
-    
     setUser(userData);
     setRole(userData.role || null);
   }, []);
 
-  const canAccess = (allowedRoles = []) => {
+  const canAccess = useCallback((allowedRoles = []) => {
     if (!user) return false;
     if (allowedRoles.length === 0) return true;
     return allowedRoles.includes(user.role);
-  };
+  }, [user]);
 
   const contextValue = {
     user,

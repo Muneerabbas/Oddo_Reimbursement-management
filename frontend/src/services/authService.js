@@ -1,66 +1,65 @@
 import axios from 'axios';
+import apiClient from './apiClient';
 import loadingService from './loadingService';
 
-// The authService abstracts all endpoints related to user authentication
+function pickErrorMessage(error) {
+  const data = error.response?.data;
+  if (data && typeof data.message === 'string') return data.message;
+  if (Array.isArray(data?.errors) && data.errors[0]?.message) return data.errors[0].message;
+  return error.message || 'Request failed';
+}
+
+function wrapAxiosError(err) {
+  const wrapped = new Error(pickErrorMessage(err));
+  if (err.response) wrapped.response = err.response;
+  if (err.code) wrapped.code = err.code;
+  return wrapped;
+}
+
 const authService = {
-  /**
-   * Login user with email and password
-   * @param {string} email
-   * @param {string} password
-   */
-  login: async (email) => {
-    return loadingService.withGlobalLoading(async () => {
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Hardcoded mock successful response
+  login: async (email, password) => {
+    try {
+      const { data } = await apiClient.post('/auth/login', { email, password });
       return {
-        user: {
-          id: 'USR-1001',
-          name: 'Demo Admin',
-          email: email,
-          role: 'admin', // Mocked as admin to showcase all features
-        },
-        token: 'mock-jwt-token-123456789',
-        refreshToken: 'mock-refresh-token-123456789',
+        user: data.user,
+        token: data.token,
+        refreshToken: data.refreshToken,
       };
-    });
+    } catch (err) {
+      throw wrapAxiosError(err);
+    }
   },
 
-  /**
-   * Register a new user and potentially automatically map/create their company backend-side
-   * @param {Object} userData - { name, email, password, country }
-   */
   signup: async (userData) => {
-    return loadingService.withGlobalLoading(async () => {
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // Hardcoded mock successful response
+    try {
+      const { data } = await apiClient.post('/auth/register', {
+        fullName: userData.name,
+        email: userData.email,
+        password: userData.password,
+        countryCode: userData.country,
+        companyName: userData.companyName || undefined,
+        companyAbout: userData.companyAbout || undefined,
+        companyWebsite: userData.companyWebsite || undefined,
+        companyIndustry: userData.companyIndustry || undefined,
+        companyPhone: userData.companyPhone || undefined,
+      });
+
       return {
-        user: {
-          id: 'USR-1002',
-          name: userData.name,
-          email: userData.email,
-          role: 'manager', 
-        },
-        token: 'mock-jwt-token-987654321',
-        refreshToken: 'mock-refresh-token-987654321',
+        user: data.user,
+        token: data.token,
+        refreshToken: data.refreshToken,
       };
-    });
+    } catch (err) {
+      throw wrapAxiosError(err);
+    }
   },
 
-  /**
-   * Fetch a list of countries from an external API for the registration form
-   * This calls a full URL directly so it circumvents the apiClient's base URL
-   */
-  getCountries: async () => {
-    return loadingService.withGlobalLoading(async () => {
-      const response = await axios.get('https://restcountries.com/v3.1/all?fields=name,currencies');
-      // Sort countries alphabetically by their common name for better UX
-      return response.data.sort((a, b) => a.name.common.localeCompare(b.name.common));
-    });
-  },
+  getCountries: async () => loadingService.withGlobalLoading(async () => {
+    const response = await axios.get('https://restcountries.com/v3.1/all?fields=name,currencies,cca2');
+    return response.data
+      .filter((country) => country.cca2)
+      .sort((a, b) => a.name.common.localeCompare(b.name.common));
+  }),
 };
 
 export default authService;
