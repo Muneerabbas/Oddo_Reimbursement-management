@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { getStoredUser } from '../utils/authStorage';
 
 /**
  * Chatbot Service handling communication with the AI assistant.
@@ -7,18 +8,32 @@ import apiClient from './apiClient';
 const chatbotService = {
   sendMessage: async (message) => {
     try {
-      // Opt-out of the global loading spinner for chatbot interactions to keep UI seamless
+      const user = getStoredUser();
       const response = await apiClient.post(
-        '/chatbot/message',
-        { message },
+        '/support/agent',
+        {
+          message,
+          conversationId: `chat-${user?.id || 'anon'}`,
+          userContext: {
+            userId: user?.id,
+            companyId: user?.company?.id,
+            role: user?.role,
+          },
+          strictMode: false,
+        },
         { skipGlobalLoader: true }
       );
-      
-      return response.data;
+
+      return {
+        reply: response.data?.answer || 'No response generated.',
+        confidence: response.data?.confidence,
+        queryTrace: response.data?.queryTrace || [],
+        suggestedActions: response.data?.suggestedActions || [],
+        escalate: response.data?.escalate || false,
+        escalateReason: response.data?.escalateReason || null,
+      };
     } catch (error) {
-      console.warn("Chatbot API failed or not connected, falling back to frontend mock.", error);
-      
-      // Simulate network delay for realism
+      console.warn('Support agent API failed, falling back to frontend mock.', error);
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // Simulated fallback responses
@@ -36,7 +51,12 @@ const chatbotService = {
       }
 
       return {
-        reply: replyMessage
+        reply: replyMessage,
+        confidence: 0.4,
+        queryTrace: [],
+        suggestedActions: [],
+        escalate: true,
+        escalateReason: 'Backend support agent unavailable; using fallback mode.',
       };
     }
   },

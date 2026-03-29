@@ -5,7 +5,11 @@ import chatbotService from '../../services/chatbotService';
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { text: "Hi there! I'm your AI Expense Assistant. Ask me about policies, how to submit an expense, or checking approval status.", sender: 'bot' }
+    {
+      text: "Hi there! I'm your SQL-first Support Agent. Ask about billing disputes, reimbursement status, or approval workflow.",
+      sender: 'bot',
+      meta: { confidence: 0.99, queryTrace: [], suggestedActions: [], escalate: false, escalateReason: null },
+    }
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -36,7 +40,17 @@ const Chatbot = () => {
     try {
       const response = await chatbotService.sendMessage(userMsg.text);
       if (response && response.reply) {
-        setMessages(prev => [...prev, { text: response.reply, sender: 'bot' }]);
+        setMessages(prev => [...prev, {
+          text: response.reply,
+          sender: 'bot',
+          meta: {
+            confidence: response.confidence,
+            queryTrace: response.queryTrace || [],
+            suggestedActions: response.suggestedActions || [],
+            escalate: response.escalate,
+            escalateReason: response.escalateReason,
+          },
+        }]);
       }
     } catch (err) {
       setMessages(prev => [...prev, { 
@@ -104,6 +118,24 @@ const Chatbot = () => {
                   }`}
                 >
                   {msg.text}
+                  {msg.sender === 'bot' && msg.meta && (
+                    <div className="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-500 space-y-1">
+                      {typeof msg.meta.confidence === 'number' && (
+                        <div>Confidence: {Math.round(msg.meta.confidence * 100)}%</div>
+                      )}
+                      {Array.isArray(msg.meta.queryTrace) && msg.meta.queryTrace.length > 0 && (
+                        <div>Trace: {msg.meta.queryTrace.map((q) => q.templateId).join(', ')}</div>
+                      )}
+                      {Array.isArray(msg.meta.suggestedActions) && msg.meta.suggestedActions.length > 0 && (
+                        <div>Suggested: {msg.meta.suggestedActions.join(' ')}</div>
+                      )}
+                      {msg.meta.escalate && (
+                        <div className="text-amber-600 font-semibold">
+                          Escalate: {msg.meta.escalateReason || 'Human review recommended.'}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
