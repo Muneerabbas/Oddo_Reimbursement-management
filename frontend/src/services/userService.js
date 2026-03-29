@@ -30,6 +30,19 @@ let mockUsers = [
     id: 'USR-3001',
     name: 'Mia Turner',
     email: 'mia.turner@odoo.com',
+    role: 'employee',
+    managerId: 'USR-2001',
+  },
+  {
+    id: 'USR-3002',
+    name: 'Noah Singh',
+    email: 'noah.singh@odoo.com',
+    role: 'employee',
+    managerId: 'USR-2002',
+  },
+];
+
+const resolveManagerName = (managerId, users) => {
   if (!managerId) return 'Unassigned';
   const managerRecord = users.find((entry) => entry.id === managerId);
   return managerRecord?.name || 'Unassigned';
