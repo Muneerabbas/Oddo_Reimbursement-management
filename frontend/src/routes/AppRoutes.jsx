@@ -11,7 +11,7 @@ import RoleBasedDashboard from '../pages/dashboard/RoleBasedDashboard';
 import MyExpenses from '../pages/expenses/MyExpenses';
 import ScanReceipt from '../pages/expenses/ScanReceipt';
 import SubmitExpense from '../pages/expenses/SubmitExpense';
-import ManagerLogs from '../pages/logs/ManagerLogs';
+import ManagerLogs from '../pages/manager-logs/ManagerLogs';
 import Landing from '../pages/public/Landing';
 import Unauthorized from '../pages/system/Unauthorized';
 import Teams from '../pages/teams/Teams';
