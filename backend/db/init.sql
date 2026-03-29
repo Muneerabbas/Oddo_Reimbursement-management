@@ -109,6 +109,23 @@ CREATE TABLE IF NOT EXISTS bills (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS expense_submissions (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  employee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expense_date DATE NOT NULL,
+  category VARCHAR(100) NOT NULL,
+  description TEXT NOT NULL,
+  amount DECIMAL(12, 2) NOT NULL CHECK (amount >= 0),
+  currency VARCHAR(3) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'paid')),
+  receipt_file_name VARCHAR(255) NOT NULL,
+  receipt_mime_type VARCHAR(255) NOT NULL,
+  receipt_size INTEGER NOT NULL CHECK (receipt_size >= 0),
+  receipt_data BYTEA NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id);
 CREATE INDEX IF NOT EXISTS idx_users_manager_id ON users(manager_id);
 CREATE INDEX IF NOT EXISTS idx_users_company_role_id ON users(company_role_id);
@@ -127,6 +144,9 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_expense_id ON audit_logs(expense_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_bills_ocr_status ON bills(ocr_status);
 CREATE INDEX IF NOT EXISTS idx_bills_created_at ON bills(created_at);
+CREATE INDEX IF NOT EXISTS idx_expense_submissions_company_id ON expense_submissions(company_id);
+CREATE INDEX IF NOT EXISTS idx_expense_submissions_employee_id ON expense_submissions(employee_id);
+CREATE INDEX IF NOT EXISTS idx_expense_submissions_created_at ON expense_submissions(created_at);
 
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$

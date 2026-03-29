@@ -112,10 +112,19 @@ const ExpenseForm = () => {
       return;
     }
 
+    if (!fileDetails?.file) {
+      notificationService.error('Please attach the receipt before submitting.');
+      setIsLoading(false);
+      return;
+    }
+
     const processToast = notificationService.loading('Submitting expense...');
 
     try {
-      await expenseService.submitExpense(formData);
+      await expenseService.submitExpense({
+        ...formData,
+        file: fileDetails.file,
+      });
       
       notificationService.success('Successfully submitted!', { id: processToast, duration: 2500 });
       
@@ -126,7 +135,7 @@ const ExpenseForm = () => {
       
     } catch (err) {
       console.error(err);
-      notificationService.error('Failed to submit. Please check connection.', { id: processToast });
+      notificationService.error(err.message || 'Failed to submit. Please check connection.', { id: processToast });
       setIsLoading(false);
     }
   };
@@ -289,7 +298,7 @@ const ExpenseForm = () => {
                     Drag and drop your receipt here, or <span className="text-primary cursor-pointer hover:underline">browse files</span>
                   </p>
                   <p className="text-xs text-slate-400 mt-2 text-center text-balance">
-                    Supported formats: .pdf, .jpg, .png. Maximum mock file size: 5MB.
+                    Supported formats: .pdf, .jpg, .png, and common office docs. Maximum file size: 10MB.
                   </p>
 
                   <input 

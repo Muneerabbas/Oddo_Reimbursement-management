@@ -3,6 +3,7 @@ import cors from "cors";
 import healthRoutes from "./routes/healthRoutes";
 import authRoutes from "./routes/authRoutes";
 import teamRoutes from "./routes/teamRoutes";
+import expenseRoutes from "./routes/expenseRoutes";
 import { env } from "./config/env";
 import { testDbConnection } from "./config/db";
 import billRoutes from "./routes/billRoutes";
@@ -15,6 +16,7 @@ app.use(env.billUploadPublicPath, express.static(env.billUploadDir));
 
 app.use("/api", healthRoutes);
 app.use("/api", billRoutes);
+app.use("/api", expenseRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
 
