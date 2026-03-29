@@ -4,14 +4,6 @@ import { UploadCloud, FileType2, Calendar, FileText, ScanLine, Calculator } from
 import expenseService from '../../services/expenseService';
 import notificationService from '../../services/notificationService';
 
-const exchangeRates = {
-  USD: 1.0,
-  EUR: 1.09,
-  GBP: 1.27,
-  INR: 0.012,
-  CAD: 0.74,
-};
-
 const ExpenseForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,6 +21,9 @@ const ExpenseForm = () => {
   const [fileDetails, setFileDetails] = useState(null);
   const [convertedPreview, setConvertedPreview] = useState(null);
   const [aiExtraction, setAiExtraction] = useState(null);
+  const [deviceCurrency, setDeviceCurrency] = useState('USD');
+  const [deviceCountryName, setDeviceCountryName] = useState('');
+  const [supportedCurrencies] = useState(expenseService.getSupportedCurrencies());
 
   const lowConfidenceFields = useMemo(() => {
     if (!aiExtraction) return new Set();
@@ -40,14 +35,56 @@ const ExpenseForm = () => {
   }, [aiExtraction]);
 
   useEffect(() => {
-    if (formData.amount && formData.currency !== 'USD') {
-      const rate = exchangeRates[formData.currency] || 1;
-      const converted = (parseFloat(formData.amount) * rate).toFixed(2);
-      setConvertedPreview(`~ $${converted} USD`);
-    } else {
-      setConvertedPreview(null);
-    }
-  }, [formData.amount, formData.currency]);
+    let active = true;
+    const detect = async () => {
+      try {
+        const ctx = await expenseService.detectDeviceCurrencyContext();
+        if (!active) return;
+        setDeviceCurrency(ctx.currency || 'USD');
+        setDeviceCountryName(ctx.countryName || '');
+        setFormData((prev) => ({
+          ...prev,
+          currency: prev.currency === 'USD' ? (ctx.currency || 'USD') : prev.currency,
+        }));
+      } catch {
+        if (!active) return;
+        setDeviceCurrency('USD');
+      }
+    };
+    void detect();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      if (!formData.amount) {
+        setConvertedPreview(null);
+        return;
+      }
+      try {
+        const result = await expenseService.convertCurrencyAmount(
+          formData.amount,
+          formData.currency,
+          deviceCurrency,
+        );
+        if (!active || !result) return;
+        const base = Number(formData.amount).toFixed(2);
+        setConvertedPreview(
+          `${base} ${formData.currency} ≈ ${result.convertedAmount.toFixed(2)} ${deviceCurrency}`,
+        );
+      } catch {
+        if (!active) return;
+        setConvertedPreview('Live conversion unavailable right now');
+      }
+    };
+    void run();
+    return () => {
+      active = false;
+    };
+  }, [formData.amount, formData.currency, deviceCurrency]);
 
   useEffect(() => {
     const prefill = location.state?.prefillExpense;
@@ -108,10 +145,17 @@ const ExpenseForm = () => {
       const extractedDate =
         suggestion.date || extraction?.date?.value || new Date().toISOString().split('T')[0];
       const extractedCategory =
-        suggestion.category || extraction?.category?.value || 'Other';
+        suggestion.category || extraction?.expenseType?.value || extraction?.category?.value || 'Other';
+      const extractedLines = Array.isArray(extraction?.expenseLines) ? extraction.expenseLines : [];
+      const linesPreview = extractedLines
+        .slice(0, 3)
+        .map((line) => line?.label)
+        .filter(Boolean)
+        .join(', ');
       const extractedDescription =
         suggestion.description ||
         extraction?.description?.value ||
+        (linesPreview ? `Items: ${linesPreview}` : '') ||
         (suggestion.vendor ? `Expense at ${suggestion.vendor}` : '') ||
         'Receipt-based business expense';
 
@@ -206,7 +250,7 @@ const ExpenseForm = () => {
                 disabled={isLoading || isOcrLoading}
                 className={`bg-slate-50 border text-slate-700 text-sm rounded-r-lg focus:ring-2 focus:ring-primary focus:border-primary focus:z-10 focus:outline-none transition-colors px-3 py-2 disabled:text-slate-400 ${inputBorder('currency')}`}
               >
-                {Object.keys(exchangeRates).map((cur) => (
+                {supportedCurrencies.map((cur) => (
                   <option key={cur} value={cur}>
                     {cur}
                   </option>
@@ -217,7 +261,9 @@ const ExpenseForm = () => {
             {convertedPreview && (
               <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600 font-medium">
                 <Calculator size={12} />
-                <span>Estimated Payout: {convertedPreview}</span>
+                <span>
+                  Estimated ({deviceCountryName || 'your locale'}): {convertedPreview}
+                </span>
               </div>
             )}
           </div>
@@ -301,6 +347,11 @@ const ExpenseForm = () => {
             </div>
             {Array.isArray(aiExtraction.flags) && aiExtraction.flags.length > 0 && (
               <div className="text-amber-700">Flags: {aiExtraction.flags.join(', ')}</div>
+            )}
+            {Array.isArray(aiExtraction.expenseLines) && aiExtraction.expenseLines.length > 0 && (
+              <div className="text-slate-700 text-xs">
+                Extracted lines: {aiExtraction.expenseLines.slice(0, 4).map((l) => l.label).filter(Boolean).join(', ')}
+              </div>
             )}
             <p className="text-slate-600 text-xs">
               Low-confidence fields are highlighted in amber. Please review before submitting.

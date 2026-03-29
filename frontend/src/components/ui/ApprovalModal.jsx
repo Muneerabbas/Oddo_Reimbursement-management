@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, FileText, Info, MessageSquareText, X, XCircle } from 'lucide-react';
+import {
+  Calculator,
+  CheckCircle2,
+  FileText,
+  Info,
+  MessageSquareText,
+  X,
+  XCircle,
+} from 'lucide-react';
+import { convertCurrencyAmount } from '../../services/currencyService';
 
 const formatCurrencyValue = (amount, currency = 'USD') => {
   const numeric = Number(amount ?? 0);
@@ -24,6 +33,32 @@ const ApprovalModal = ({
   isProcessing,
 }) => {
   const [comment, setComment] = useState('');
+  const [estimatedConversion, setEstimatedConversion] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const run = async () => {
+      if (!request?.amount || !request?.currency || request.currency === 'USD') {
+        setEstimatedConversion(null);
+        return;
+      }
+
+      try {
+        const result = await convertCurrencyAmount(request.amount, request.currency, 'USD');
+        if (!active || !result) return;
+        setEstimatedConversion(`$${result.convertedAmount.toFixed(2)} USD`);
+      } catch {
+        if (!active) return;
+        setEstimatedConversion(null);
+      }
+    };
+
+    void run();
+    return () => {
+      active = false;
+    };
+  }, [request?.amount, request?.currency]);
 
   useEffect(() => {
     if (!request) return undefined;
@@ -85,6 +120,12 @@ const ApprovalModal = ({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Requested Amount</p>
               <p className="mt-1 text-sm font-bold text-slate-900">{requestAmount}</p>
+              {estimatedConversion && (
+                <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-700">
+                  <Calculator size={12} />
+                  Est. {estimatedConversion}
+                </p>
+              )}
             </div>
           </div>
 

@@ -1,5 +1,88 @@
 import apiClient from './apiClient';
 import loadingService from './loadingService';
+import { convertCurrencyAmount } from './currencyService';
+
+const COMMON_CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'CAD'];
+let restCountriesCache = null;
+
+async function fetchWithTimeout(url, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchRestCountries() {
+  if (restCountriesCache) return restCountriesCache;
+  const response = await fetchWithTimeout('https://restcountries.com/v3.1/all?fields=name,currencies,cca2', 12000);
+  if (!response.ok) throw new Error('Unable to fetch country currency data.');
+  restCountriesCache = await response.json();
+  return restCountriesCache;
+}
+
+function parseRegionFromLanguage() {
+  const lang = navigator.language || '';
+  const parts = lang.split('-');
+  return (parts[1] || '').toUpperCase() || null;
+}
+
+function getGeoPosition(timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation not supported'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      timeout: timeoutMs,
+      maximumAge: 5 * 60 * 1000,
+    });
+  });
+}
+
+async function reverseGeocodeCountry(lat, lon) {
+  const response = await fetchWithTimeout(
+    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
+    10000,
+  );
+  if (!response.ok) return null;
+  const data = await response.json();
+  return {
+    countryCode: data?.address?.country_code?.toUpperCase() || null,
+    countryName: data?.address?.country || null,
+  };
+}
+
+async function resolveCurrencyFromCountryCode(countryCode) {
+  if (!countryCode) return null;
+  const countries = await fetchRestCountries();
+  const entry = countries.find((c) => c.cca2 === countryCode);
+  if (!entry?.currencies) return null;
+  const code = Object.keys(entry.currencies)[0];
+  return code || null;
+}
+
+async function detectDeviceCurrencyContext() {
+  let countryCode = parseRegionFromLanguage();
+  let countryName = null;
+
+  try {
+    const pos = await getGeoPosition();
+    const geo = await reverseGeocodeCountry(pos.coords.latitude, pos.coords.longitude);
+    if (geo?.countryCode) {
+      countryCode = geo.countryCode;
+      countryName = geo.countryName;
+    }
+  } catch {
+    // Fallback to navigator.language region only.
+  }
+
+  const currency = (await resolveCurrencyFromCountryCode(countryCode)) || 'USD';
+  return { countryCode, countryName, currency };
+}
 
 const expenseService = {
   /**
@@ -118,25 +201,50 @@ const expenseService = {
       }
       const payload = new FormData();
       payload.append('bill', file);
+      const run = () => apiClient.post('/expenses/extract', payload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 90000,
+      });
+
       try {
-        const { data } = await apiClient.post('/expenses/extract', payload, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        const { data } = await run();
         return data;
-      } catch (err) {
-        const backendMessage = err?.response?.data?.message;
-        if (backendMessage) {
-          throw new Error(backendMessage);
+      } catch (firstErr) {
+        const status = firstErr?.response?.status;
+        const transient =
+          firstErr?.code === 'ECONNABORTED'
+          || firstErr?.code === 'ERR_NETWORK'
+          || !status
+          || status >= 500;
+        if (!transient) {
+          const backendMessage = firstErr?.response?.data?.message;
+          throw new Error(backendMessage || firstErr?.message || 'Extraction failed.');
         }
-        if (err?.message) {
-          throw new Error(`Extraction failed: ${err.message}`);
+        try {
+          const { data } = await run();
+          return data;
+        } catch (err) {
+          const backendMessage = err?.response?.data?.message;
+          if (backendMessage) {
+            throw new Error(backendMessage);
+          }
+          if (err?.code === 'ECONNABORTED') {
+            throw new Error('Extraction timed out. Please try a smaller/clearer image or retry.');
+          }
+          if (err?.message) {
+            throw new Error(`Extraction failed: ${err.message}`);
+          }
+          throw new Error('Extraction failed due to a network or server error.');
         }
-        throw new Error('Extraction failed due to a network or server error.');
       }
     });
   },
+
+  detectDeviceCurrencyContext,
+  convertCurrencyAmount,
+  getSupportedCurrencies: () => COMMON_CURRENCIES.slice(),
 
   simulateOCRScan: async (file) => {
     const data = await expenseService.extractExpenseFromReceipt(file);
