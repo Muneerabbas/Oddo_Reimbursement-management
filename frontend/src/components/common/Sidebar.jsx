@@ -57,7 +57,7 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
         
         {/* Brand Header */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200">
-          <span className="text-lg font-bold text-slate-800 tracking-tight">Oddo Corporate</span>
+          <span className="text-lg font-bold text-slate-800 tracking-tight">Odoo Corporate</span>
           {/* Mobile close button visible only when mobile menu is open */}
           <button 
             className="md:hidden text-slate-500 hover:text-slate-800 focus:outline-none"

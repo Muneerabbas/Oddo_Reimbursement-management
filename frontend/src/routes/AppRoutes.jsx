@@ -11,6 +11,7 @@ import DashboardHome from '../pages/dashboard/DashboardHome';
 import MyExpenses from '../pages/expenses/MyExpenses';
 import ScanReceipt from '../pages/expenses/ScanReceipt';
 import SubmitExpense from '../pages/expenses/SubmitExpense';
+import Landing from '../pages/public/Landing';
 import Unauthorized from '../pages/system/Unauthorized';
 import Teams from '../pages/teams/Teams';
 import ProtectedRoute from './ProtectedRoute';
@@ -25,6 +26,7 @@ const AppRoutes = () => {
       )}
     >
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<AuthLayout />}>
           <Route path="login" element={<Login />} />
           <Route path="signup" element={<Signup />} />
@@ -33,7 +35,6 @@ const AppRoutes = () => {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardHome />} />
 
             <Route path="expenses" element={<MyExpenses />} />
@@ -53,7 +54,7 @@ const AppRoutes = () => {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );
