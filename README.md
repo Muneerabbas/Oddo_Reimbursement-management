@@ -7,7 +7,19 @@
   <img src="https://img.shields.io/badge/TypeScript-5-blue?logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/PostgreSQL-14-blue?logo=postgresql" alt="Postgres" />
 </p>
+## Screenshots
 
+| Image 1 | Image 2 |
+|--------|--------|
+| ![](https://github.com/user-attachments/assets/ea343925-1fe7-4d65-b151-e6a562896ed5) | ![](https://github.com/user-attachments/assets/f8fac43c-9420-4e57-96a1-a3bd27bfe103) |
+
+| Image 3 | Image 4 |
+|--------|--------|
+| ![](https://github.com/user-attachments/assets/38f247b4-2c4f-43dd-bdcd-746b12425cc5) | ![](https://github.com/user-attachments/assets/4840a01d-5633-4e1a-b5f9-2705bd2e5d82) |
+
+| Image 5 | Image 6 |
+|--------|--------|
+| ![](https://github.com/user-attachments/assets/dde63ad8-2e98-4b2c-893f-7cb4a31510ef) | ![](https://github.com/user-attachments/assets/fb86517c-0f6f-4c4d-ad90-ff01436c23bc) |
 A modern, full-stack corporate reimbursement and expense management system, complete with multi-tier role hierarchies, OCR smart scanning, dynamic routing rules, and an embedded SQL-backed AI Support Agent. 
 
 ## 🌟 Key Features
