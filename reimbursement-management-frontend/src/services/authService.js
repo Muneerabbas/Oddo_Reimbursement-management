@@ -9,8 +9,19 @@ const authService = {
    * @param {string} password
    */
   login: async (email, password) => {
-    const response = await apiClient.post('/auth/login', { email, password });
-    return response.data;
+    // Simulate network delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    // Hardcoded mock successful response
+    return {
+      user: {
+        id: 'USR-1001',
+        name: 'Demo Admin',
+        email: email,
+        role: 'admin', // Mocked as admin to showcase all features
+      },
+      token: 'mock-jwt-token-123456789'
+    };
   },
 
   /**
@@ -18,8 +29,19 @@ const authService = {
    * @param {Object} userData - { name, email, password, country }
    */
   signup: async (userData) => {
-    const response = await apiClient.post('/auth/signup', userData);
-    return response.data;
+    // Simulate network delay
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    // Hardcoded mock successful response
+    return {
+      user: {
+        id: 'USR-1002',
+        name: userData.name,
+        email: userData.email,
+        role: 'manager', 
+      },
+      token: 'mock-jwt-token-987654321'
+    };
   },
 
   /**

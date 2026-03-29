@@ -1,15 +1,17 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
-import MainLayout from '../layouts/MainLayout';
+import DashboardLayout from '../layouts/DashboardLayout';
 import AuthLayout from '../layouts/AuthLayout';
 
 import Login from '../pages/auth/Login';
 import Signup from '../pages/auth/Signup';
+import DashboardHome from '../pages/dashboard/DashboardHome';
+import ExpenseList from '../pages/expenses/ExpenseList';
+import SubmitExpense from '../pages/expenses/SubmitExpense';
 
 // In a real application, you would lazy load the page components here.
 // Example:
-// const DashboardHome = lazy(() => import('../pages/dashboard/Dashboard'));
 // const ExpensesList = lazy(() => import('../pages/expenses/ExpenseList'));
 
 // For now, these are placeholder components to demonstrate routing.
@@ -36,13 +38,13 @@ const AppRoutes = () => {
 
         {/* Protected Routes inside Main Layout */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<MainLayout />}>
+          <Route path="/" element={<DashboardLayout />}>
             {/* Redirect / to dashboard */}
             <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<PlaceholderComponent title="Dashboard Core" />} />
+            <Route path="dashboard" element={<DashboardHome />} />
             
-            <Route path="expenses" element={<PlaceholderComponent title="Expense Management" />} />
-            <Route path="expenses/new" element={<PlaceholderComponent title="Create Expense Request" />} />
+            <Route path="expenses" element={<ExpenseList />} />
+            <Route path="expenses/new" element={<SubmitExpense />} />
 
             {/* Approvals route accessible by specific roles (e.g. manager) */}
             <Route element={<ProtectedRoute allowedRoles={['manager', 'admin']} />}>
