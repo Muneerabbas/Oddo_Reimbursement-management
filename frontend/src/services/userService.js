@@ -8,41 +8,28 @@ let mockUsers = [
   {
     id: 'USR-1001',
     name: 'Demo Admin',
-    email: 'admin@oddo.com',
+    email: 'admin@odoo.com',
     role: 'admin',
     managerId: null,
   },
   {
     id: 'USR-2001',
     name: 'Ariana Blake',
-    email: 'ariana.blake@oddo.com',
+    email: 'ariana.blake@odoo.com',
     role: 'manager',
     managerId: null,
   },
   {
     id: 'USR-2002',
     name: 'Daniel Holt',
-    email: 'daniel.holt@oddo.com',
+    email: 'daniel.holt@odoo.com',
     role: 'manager',
     managerId: null,
   },
   {
     id: 'USR-3001',
     name: 'Mia Turner',
-    email: 'mia.turner@oddo.com',
-    role: 'employee',
-    managerId: 'USR-2001',
-  },
-  {
-    id: 'USR-3002',
-    name: 'Noah Singh',
-    email: 'noah.singh@oddo.com',
-    role: 'employee',
-    managerId: 'USR-2002',
-  },
-];
-
-const resolveManagerName = (managerId, users) => {
+    email: 'mia.turner@odoo.com',
   if (!managerId) return 'Unassigned';
   const managerRecord = users.find((entry) => entry.id === managerId);
   return managerRecord?.name || 'Unassigned';

@@ -1,2 +1,2 @@
-# Oddo_Reimbursement-management
-hackathon project for Oddo hackathon
+# Odoo_Reimbursement-management
+hackathon project for Odoo hackathon
