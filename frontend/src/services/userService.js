@@ -1,3 +1,5 @@
+import loadingService from './loadingService';
+
 const NETWORK_DELAY_MS = 650;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,56 +73,62 @@ const assertUniqueEmail = (email, ignoreId = null) => {
 
 const userService = {
   listUsers: async () => {
-    await wait(NETWORK_DELAY_MS);
-    return mockUsers.map((record) => toViewModel(record, mockUsers));
+    return loadingService.withGlobalLoading(async () => {
+      await wait(NETWORK_DELAY_MS);
+      return mockUsers.map((record) => toViewModel(record, mockUsers));
+    });
   },
 
   createUser: async (payload) => {
-    await wait(NETWORK_DELAY_MS);
+    return loadingService.withGlobalLoading(async () => {
+      await wait(NETWORK_DELAY_MS);
 
-    assertUniqueEmail(payload.email);
+      assertUniqueEmail(payload.email);
 
-    const normalizedRole = sanitizeRole(payload.role);
-    const nextNumericId = mockUsers.length + 3001;
-    const createdRecord = {
-      id: `USR-${nextNumericId}`,
-      name: payload.name.trim(),
-      email: payload.email.trim().toLowerCase(),
-      role: normalizedRole,
-      managerId: payload.managerId || null,
-    };
+      const normalizedRole = sanitizeRole(payload.role);
+      const nextNumericId = mockUsers.length + 3001;
+      const createdRecord = {
+        id: `USR-${nextNumericId}`,
+        name: payload.name.trim(),
+        email: payload.email.trim().toLowerCase(),
+        role: normalizedRole,
+        managerId: payload.managerId || null,
+      };
 
-    mockUsers = [createdRecord, ...mockUsers];
-    return toViewModel(createdRecord, mockUsers);
+      mockUsers = [createdRecord, ...mockUsers];
+      return toViewModel(createdRecord, mockUsers);
+    });
   },
 
   updateUser: async (userId, payload) => {
-    await wait(NETWORK_DELAY_MS);
+    return loadingService.withGlobalLoading(async () => {
+      await wait(NETWORK_DELAY_MS);
 
-    const userIndex = mockUsers.findIndex((entry) => entry.id === userId);
-    if (userIndex < 0) {
-      throw new Error('User record was not found.');
-    }
+      const userIndex = mockUsers.findIndex((entry) => entry.id === userId);
+      if (userIndex < 0) {
+        throw new Error('User record was not found.');
+      }
 
-    assertUniqueEmail(payload.email, userId);
+      assertUniqueEmail(payload.email, userId);
 
-    const normalizedRole = sanitizeRole(payload.role);
-    const managerId = payload.managerId || null;
+      const normalizedRole = sanitizeRole(payload.role);
+      const managerId = payload.managerId || null;
 
-    if (managerId === userId) {
-      throw new Error('A user cannot be their own manager.');
-    }
+      if (managerId === userId) {
+        throw new Error('A user cannot be their own manager.');
+      }
 
-    const updatedRecord = {
-      ...mockUsers[userIndex],
-      name: payload.name.trim(),
-      email: payload.email.trim().toLowerCase(),
-      role: normalizedRole,
-      managerId,
-    };
+      const updatedRecord = {
+        ...mockUsers[userIndex],
+        name: payload.name.trim(),
+        email: payload.email.trim().toLowerCase(),
+        role: normalizedRole,
+        managerId,
+      };
 
-    mockUsers[userIndex] = updatedRecord;
-    return toViewModel(updatedRecord, mockUsers);
+      mockUsers[userIndex] = updatedRecord;
+      return toViewModel(updatedRecord, mockUsers);
+    });
   },
 };
 

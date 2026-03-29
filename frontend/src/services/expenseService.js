@@ -2,6 +2,7 @@
  * Mock Service layer for Expenses
  * Currently bypassing backend dependencies with hardcoded delays and arrays
  */
+import loadingService from './loadingService';
 
 const mockExpenses = [
   { id: 'EXP-1049', date: '2026-03-25', category: 'Travel', description: 'Roundtrip flight to Tech Conference', amount: 540.00, status: 'Approved' },
@@ -32,9 +33,11 @@ const expenseService = {
    * Fetch all expenses tied to the current user
    */
   getExpenses: async () => {
-    // Artificial 1 second network delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return [...mockExpenses];
+    return loadingService.withGlobalLoading(async () => {
+      // Artificial 1 second network delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return [...mockExpenses];
+    });
   },
 
   /**
@@ -42,26 +45,28 @@ const expenseService = {
    * @param {Object} formData 
    */
   submitExpense: async (formData) => {
-    // Artificial 1.5 second formulation network delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // Simulate generic error chance or generic success
-    // In our case, we will permanently succeed so the UI redirects properly
-    
-    const newExpense = {
-      id: `EXP-${Math.floor(Math.random() * 9000) + 1000}`,
-      date: formData.date || new Date().toISOString().split('T')[0],
-      category: formData.category || 'Other',
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      currency: formData.currency || 'USD',
-      status: 'Pending'
-    };
+    return loadingService.withGlobalLoading(async () => {
+      // Artificial 1.5 second formulation network delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      
+      // Simulate generic error chance or generic success
+      // In our case, we will permanently succeed so the UI redirects properly
+      
+      const newExpense = {
+        id: `EXP-${Math.floor(Math.random() * 9000) + 1000}`,
+        date: formData.date || new Date().toISOString().split('T')[0],
+        category: formData.category || 'Other',
+        description: formData.description,
+        amount: parseFloat(formData.amount),
+        currency: formData.currency || 'USD',
+        status: 'Pending'
+      };
 
-    // Push into our active memory array for this session
-    mockExpenses.unshift(newExpense);
+      // Push into our active memory array for this session
+      mockExpenses.unshift(newExpense);
 
-    return newExpense;
+      return newExpense;
+    });
   },
 
   /**
@@ -69,27 +74,31 @@ const expenseService = {
    * Extracts generic values from a file upload mimicking AI processing
    * @param {File} file 
    */
-  simulateOCRScan: async (file) => {
-    // Simulate a heavier ML processing latency
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-    
-    // Return dummy data struct that the UI form will consume to auto-fill
-    return {
-       amount: '142.50',
-       date: new Date().toISOString().split('T')[0],
-       category: 'Meals',
-       description: 'Automated Extraction from Receipt scan',
-       currency: 'USD'
-    };
+  simulateOCRScan: async () => {
+    return loadingService.withGlobalLoading(async () => {
+      // Simulate a heavier ML processing latency
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      
+      // Return dummy data struct that the UI form will consume to auto-fill
+      return {
+         amount: '142.50',
+         date: new Date().toISOString().split('T')[0],
+         category: 'Meals',
+         description: 'Automated Extraction from Receipt scan',
+         currency: 'USD'
+      };
+    });
   },
 
   /**
    * Fetch all team requests currently relying on the current Manager's approval
    */
   getPendingApprovals: async () => {
-    // Artificial 1 second network delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return [...mockPendingApprovals];
+    return loadingService.withGlobalLoading(async () => {
+      // Artificial 1 second network delay
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return [...mockPendingApprovals];
+    });
   },
 
   /**
@@ -98,14 +107,16 @@ const expenseService = {
    * @param {string} action - 'Approved' | 'Rejected'
    * @param {string} comment - Mandatory for rejection, optional for approval
    */
-  resolveApproval: async (id, action, comment) => {
-    // Simulate API resolving latency
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // Simulate visually removing it from our active local memory so the UI updates natively!
-    mockPendingApprovals = mockPendingApprovals.filter(req => req.id !== id);
-    
-    return { success: true, message: `Request ${id} successfully ${action.toLowerCase()}.` };
+  resolveApproval: async (id, action) => {
+    return loadingService.withGlobalLoading(async () => {
+      // Simulate API resolving latency
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      // Simulate visually removing it from our active local memory so the UI updates natively!
+      mockPendingApprovals = mockPendingApprovals.filter(req => req.id !== id);
+      
+      return { success: true, message: `Request ${id} successfully ${action.toLowerCase()}.` };
+    });
   }
 }
 

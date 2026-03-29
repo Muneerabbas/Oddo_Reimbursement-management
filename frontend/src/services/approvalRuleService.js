@@ -1,3 +1,5 @@
+import loadingService from './loadingService';
+
 const MOCK_DELAY = 550;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -16,14 +18,18 @@ let storedRuleConfig = {
 
 const approvalRuleService = {
   getApprovalRuleConfig: async () => {
-    await wait(MOCK_DELAY);
-    return clone(storedRuleConfig);
+    return loadingService.withGlobalLoading(async () => {
+      await wait(MOCK_DELAY);
+      return clone(storedRuleConfig);
+    });
   },
 
   saveApprovalRuleConfig: async (payload) => {
-    await wait(MOCK_DELAY);
-    storedRuleConfig = clone(payload);
-    return { success: true };
+    return loadingService.withGlobalLoading(async () => {
+      await wait(MOCK_DELAY);
+      storedRuleConfig = clone(payload);
+      return { success: true };
+    });
   },
 };
 

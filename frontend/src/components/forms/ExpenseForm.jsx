@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UploadCloud, FileType2, Calendar, FileText, CheckCircle, AlertCircle, ScanLine, Calculator } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import { UploadCloud, FileType2, Calendar, FileText, ScanLine, Calculator } from 'lucide-react';
 import expenseService from '../../services/expenseService';
+import notificationService from '../../services/notificationService';
 
 // Generic Mock Exchange Rates (Base USD)
 const exchangeRates = {
@@ -75,12 +75,12 @@ const ExpenseForm = () => {
   // The Mock "Smart OCR" button handler
   const handleAutoFillOCR = async () => {
     if (!fileDetails?.file) {
-      toast.error("Please upload a receipt first!");
+      notificationService.error('Please upload a receipt first!');
       return;
     }
     
     setIsOcrLoading(true);
-    const renderToastId = toast.loading('Extracting data with AI...');
+    const renderToastId = notificationService.loading('Extracting data with AI...');
     
     try {
        const extractedData = await expenseService.simulateOCRScan(fileDetails.file);
@@ -92,10 +92,10 @@ const ExpenseForm = () => {
          description: extractedData.description,
          currency: extractedData.currency
        }));
-       toast.success("Receipt successfully parsed!", { id: renderToastId });
+       notificationService.success('Receipt successfully parsed!', { id: renderToastId });
     } catch(err) {
        console.error(err);
-       toast.error("AI scanning failed. Please enter manually.", { id: renderToastId });
+       notificationService.error('AI scanning failed. Please enter manually.', { id: renderToastId });
     } finally {
        setIsOcrLoading(false);
     }
@@ -107,17 +107,17 @@ const ExpenseForm = () => {
     setIsLoading(true);
 
     if (!formData.category || !formData.amount || !formData.description) {
-      toast.error('Please fill out all required fields.');
+      notificationService.error('Please fill out all required fields.');
       setIsLoading(false);
       return;
     }
 
-    const processToast = toast.loading('Submitting expense...');
+    const processToast = notificationService.loading('Submitting expense...');
 
     try {
       await expenseService.submitExpense(formData);
       
-      toast.success('Successfully submitted!', { id: processToast, duration: 2500 });
+      notificationService.success('Successfully submitted!', { id: processToast, duration: 2500 });
       
       // Delay navigation to let the success toast shine momentarily
       setTimeout(() => {
@@ -126,15 +126,13 @@ const ExpenseForm = () => {
       
     } catch (err) {
       console.error(err);
-      toast.error('Failed to submit. Please check connection.', { id: processToast });
+      notificationService.error('Failed to submit. Please check connection.', { id: processToast });
       setIsLoading(false);
     }
   };
 
   return (
-    <>
-      <Toaster position="top-right" />
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
           
@@ -348,8 +346,7 @@ const ExpenseForm = () => {
           </div>
 
         </form>
-      </div>
-    </>
+    </div>
   );
 };
 

@@ -25,7 +25,7 @@ const DashboardLayout = () => {
 
         {/* Content Render Area utilizing standard scrolling and container mapping */}
         <main className="flex-1 overflow-y-auto focus:outline-none scroll-smooth">
-          <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8 max-w-7xl">
+          <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
              {/* Sub-pages resolve here seamlessly without bleeding constraints */}
              <Outlet />
           </div>

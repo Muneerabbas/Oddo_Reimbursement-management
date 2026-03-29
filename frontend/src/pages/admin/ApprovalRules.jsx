@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
 import { ToggleLeft, ToggleRight, Save } from 'lucide-react';
 import StepBuilder from '../../components/admin/StepBuilder';
 import approvalRuleService from '../../services/approvalRuleService';
+import notificationService from '../../services/notificationService';
+import PageHeader from '../../components/ui/PageHeader';
+import { TableSkeleton } from '../../components/feedback/Skeleton';
 
 const APPROVER_OPTIONS = [
   { id: 'APR-101', name: 'Ariana Blake (Engineering Manager)' },
@@ -44,7 +46,7 @@ const ApprovalRules = () => {
         }
       } catch {
         if (!cancelled) {
-          toast.error('Failed to load approval rule configuration.');
+          notificationService.error('Failed to load approval rule configuration.');
           setIsLoading(false);
         }
       }
@@ -69,12 +71,12 @@ const ApprovalRules = () => {
 
   const handleSave = async () => {
     if (!isRuleValid) {
-      toast.error('Complete all step approvers and keep percentage between 0 and 100.');
+      notificationService.error('Complete all step approvers and keep percentage between 0 and 100.');
       return;
     }
 
     setIsSaving(true);
-    const toastId = toast.loading('Saving approval rules...');
+    const toastId = notificationService.loading('Saving approval rules...');
 
     try {
       await approvalRuleService.saveApprovalRuleConfig({
@@ -83,9 +85,9 @@ const ApprovalRules = () => {
         specificApproverId,
         isHybridRuleEnabled,
       });
-      toast.success('Approval rules updated successfully.', { id: toastId });
+      notificationService.success('Approval rules updated successfully.', { id: toastId });
     } catch {
-      toast.error('Unable to save approval rules.', { id: toastId });
+      notificationService.error('Unable to save approval rules.', { id: toastId });
     } finally {
       setIsSaving(false);
     }
@@ -93,38 +95,31 @@ const ApprovalRules = () => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[360px] items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-        <span className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
+      <TableSkeleton rows={6} columns={2} />
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Toaster position="top-right" />
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Approval Rule Configuration</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Define approver sequence, percentage logic, and hybrid override behavior.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isSaving ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <Save size={16} />
-          )}
-          Save Rules
-        </button>
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title="Approval Rule Configuration"
+        description="Define approver sequence, percentage logic, and hybrid override behavior."
+        actions={(
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSaving ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <Save size={16} />
+            )}
+            Save Rules
+          </button>
+        )}
+      />
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
         <h2 className="text-lg font-semibold text-slate-800">Multi-level Approvers Sequence</h2>

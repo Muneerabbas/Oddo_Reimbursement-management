@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, Filter, X, ReceiptText } from 'lucide-react';
 import expenseService from '../../services/expenseService';
 import ExpenseTable from '../../components/ui/ExpenseTable';
 import StatusBadge from '../../components/ui/StatusBadge';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/feedback/EmptyState';
+import { TableSkeleton } from '../../components/feedback/Skeleton';
 
 const MyExpenses = () => {
+  const navigate = useNavigate();
   // Global Data State
   const [rawExpenses, setRawExpenses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,14 +75,9 @@ const MyExpenses = () => {
      return temp;
   }, [rawExpenses, searchQuery, filters]);
 
-  // Adjust pagination if filter cuts down data below active page requirement
-  useEffect(() => {
-     setCurrentPage(1);
-  }, [searchQuery, filters]);
-
-
   const handleFilterChange = (e) => {
      const { name, value } = e.target;
+     setCurrentPage(1);
      setFilters(prev => ({ ...prev, [name]: value }));
   };
 
@@ -93,26 +92,23 @@ const MyExpenses = () => {
 
 
   return (
-    <div className="flex flex-col gap-6 relative">
-      
-      {/* Header View: Metadata + Call to Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Your Expenses</h1>
-          <p className="text-sm text-slate-500 mt-1">Review past submissions, track statuses natively, and file new claims.</p>
-        </div>
-        
-        <Link 
-          to="/expenses/new" 
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white font-semibold rounded-lg shadow-sm hover:bg-primary-dark transition-colors"
-        >
-          <Plus size={18} />
-          Report Expense
-        </Link>
-      </div>
+    <div className="page-stack relative">
+      <PageHeader
+        title="Your Expenses"
+        description="Review past submissions, track statuses, and file new claims."
+        actions={(
+          <Link
+            to="/expenses/new"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark"
+          >
+            <Plus size={18} />
+            Report Expense
+          </Link>
+        )}
+      />
 
       {/* Global Utilities Area (Search & Multi-Filters) */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="panel-card flex flex-col items-center gap-4 p-4 md:flex-row md:justify-between">
         
         <div className="relative w-full md:max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -122,7 +118,10 @@ const MyExpenses = () => {
             type="text" 
             placeholder="Search Description or ID..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setSearchQuery(e.target.value);
+            }}
             disabled={isLoading}
             className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm sm:text-base text-slate-700 bg-white"
           />
@@ -166,22 +165,30 @@ const MyExpenses = () => {
 
       {/* Primary Orchestration Component */}
       {isLoading ? (
-         <div className="bg-white rounded-xl shadow-sm border border-slate-200 min-h-[400px] flex flex-col items-center justify-center text-slate-500 z-10">
-             <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-4"></div>
-             Loading tracking matrix...
-         </div>
+         <TableSkeleton rows={8} columns={6} />
       ) : error ? (
-         <div className="bg-red-50 text-red-700 p-6 rounded-xl border border-red-200">
-            <h3 className="font-semibold">{error}</h3>
-         </div>
-      ) : (
-         <ExpenseTable 
-            data={filteredData}
-            onRowClick={(expense) => setSelectedExpense(expense)}
-            currentPage={currentPage}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setCurrentPage}
+         <EmptyState
+           title="Unable to Load Expenses"
+           description={error}
          />
+      ) : (
+         filteredData.length === 0 ? (
+           <EmptyState
+             icon={ReceiptText}
+             title="No Expense Records"
+             description="No expenses matched your current filters. Adjust filters or submit a new claim."
+             actionLabel="Create Expense"
+             onAction={() => navigate('/expenses/new')}
+           />
+         ) : (
+           <ExpenseTable
+             data={filteredData}
+             onRowClick={(expense) => setSelectedExpense(expense)}
+             currentPage={currentPage}
+             rowsPerPage={rowsPerPage}
+             onPageChange={setCurrentPage}
+           />
+         )
       )}
 
       {/* Deep Detail Inspection Modal Component */}

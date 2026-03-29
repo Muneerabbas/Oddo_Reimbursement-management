@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { X, CheckCircle, XCircle, Info, Calculator } from 'lucide-react';
+
+const fallbackRates = { USD: 1.00, EUR: 1.09, GBP: 1.27, INR: 0.012, CAD: 0.74 };
 
 const ApprovalModal = ({ 
    request, 
@@ -8,26 +10,23 @@ const ApprovalModal = ({
    isProcessing 
 }) => {
   const [comment, setComment] = useState('');
-  const [estimatedConversion, setEstimatedConversion] = useState(null);
 
-  // Hardcode exchange estimates for quick visual confirmation by the Manager
-  const fallbackRates = { USD: 1.00, EUR: 1.09, GBP: 1.27, INR: 0.012, CAD: 0.74 };
+  const estimatedConversion = useMemo(() => {
+    if (!request?.amount || request?.currency === 'USD') {
+      return null;
+    }
 
-  useEffect(() => {
-     if (request?.amount && request?.currency !== 'USD') {
-        const rate = fallbackRates[request.currency] || 1;
-        const mapped = (parseFloat(request.amount) * rate).toFixed(2);
-        setEstimatedConversion(`$${mapped} USD`);
-     } else {
-        setEstimatedConversion(null);
-     }
+    const rate = fallbackRates[request.currency] || 1;
+    const mapped = (parseFloat(request.amount) * rate).toFixed(2);
+    return `$${mapped} USD`;
   }, [request]);
 
   // Trap scrolling 
   useEffect(() => {
+    if (!request) return undefined;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = 'auto'; };
-  }, []);
+  }, [request]);
 
   if (!request) return null;
 

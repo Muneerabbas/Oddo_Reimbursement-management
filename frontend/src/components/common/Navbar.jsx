@@ -1,9 +1,15 @@
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Menu, LogOut, User } from 'lucide-react';
+import notificationService from '../../services/notificationService';
 
 const Navbar = ({ toggleMobileMenu }) => {
   const { user, role, logout } = useAuth(); // Pull global session context
+
+  const handleLogout = () => {
+    logout();
+    notificationService.info('You have been logged out.');
+  };
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-4 sm:px-6 relative z-10 w-full">
@@ -51,7 +57,7 @@ const Navbar = ({ toggleMobileMenu }) => {
 
           {/* Secure Logout Action */}
           <button 
-            onClick={logout}
+            onClick={handleLogout}
             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors ml-2"
             title="Log Out Protocol"
           >

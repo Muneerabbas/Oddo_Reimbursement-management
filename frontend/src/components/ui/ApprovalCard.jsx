@@ -3,62 +3,63 @@ import { User, Calendar, FolderOpen, ArrowRightCircle } from 'lucide-react';
 
 const ApprovalCard = ({ request, onClick }) => {
   return (
-    <div 
-       onClick={() => onClick(request)}
-       className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/40 transition-all cursor-pointer group flex flex-col h-full"
+    <div
+      onClick={() => onClick(request)}
+      className="panel-card flex h-full cursor-pointer flex-col overflow-hidden p-0 transition-all hover:border-primary/40 hover:shadow-md"
     >
-      {/* Upper Status Ribbon */}
-      <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex items-center justify-between">
-         <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-               {request.approvalStep}
-            </span>
-         </div>
-         <span className="text-xs font-medium text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200 group-hover:bg-primary/5 group-hover:text-primary transition-colors">
-            {request.id}
-         </span>
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            {request.approvalStep}
+          </span>
+        </div>
+        <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-400 transition-colors">
+          {request.id}
+        </span>
       </div>
 
-      {/* Core Identifying Details */}
-      <div className="p-5 flex-1">
-         <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-               <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                  <User size={20} />
-               </div>
-               <div>
-                  <h3 className="font-bold text-slate-800 leading-tight">
-                     {request.employeeName}
-                  </h3>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
-                     <span className="flex items-center gap-1"><Calendar size={12}/> {new Date(request.date).toLocaleDateString()}</span>
-                     <span className="hidden sm:inline-block text-slate-300">•</span>
-                     <span className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded"><FolderOpen size={12}/> {request.category}</span>
-                  </div>
-               </div>
+      <div className="flex-1 p-5">
+        <div className="mb-4 flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <User size={20} />
             </div>
-         </div>
+            <div>
+              <h3 className="font-bold leading-tight text-slate-800">{request.employeeName}</h3>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span className="flex items-center gap-1">
+                  <Calendar size={12} /> {new Date(request.date).toLocaleDateString()}
+                </span>
+                <span className="hidden text-slate-300 sm:inline">•</span>
+                <span className="flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5">
+                  <FolderOpen size={12} /> {request.category}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-         <p className="text-sm text-slate-600 line-clamp-2 mt-4 leading-relaxed">
-            "{request.description}"
-         </p>
+        <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-slate-600">
+          "{request.description}"
+        </p>
       </div>
 
-      {/* Action / Value Footer */}
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between bg-white group-hover:bg-slate-50/50 transition-colors">
-         <div>
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-0.5">Payload Value</p>
-            <p className="text-lg font-bold text-slate-900">
-               {request.currency === 'USD' ? '$' : ''}
-               {typeof request.amount === 'number' ? request.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }) : request.amount}
-               {request.currency && request.currency !== 'USD' ? ` ${request.currency}` : ''}
-            </p>
-         </div>
-         
-         <button className="flex items-center gap-2 text-sm font-semibold text-primary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
-            Review Request <ArrowRightCircle size={18} />
-         </button>
+      <div className="flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 transition-colors">
+        <div>
+          <p className="mb-0.5 text-xs font-medium uppercase tracking-wider text-slate-400">Payload Value</p>
+          <p className="text-lg font-bold text-slate-900">
+            {request.currency === 'USD' ? '$' : ''}
+            {typeof request.amount === 'number'
+              ? request.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })
+              : request.amount}
+            {request.currency && request.currency !== 'USD' ? ` ${request.currency}` : ''}
+          </p>
+        </div>
+
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+          Review Request <ArrowRightCircle size={18} />
+        </span>
       </div>
     </div>
   );

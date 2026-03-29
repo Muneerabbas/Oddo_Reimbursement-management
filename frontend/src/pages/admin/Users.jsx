@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, UserPlus, Pencil } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
 import userService from '../../services/userService';
 import UserForm from '../../components/forms/UserForm';
+import notificationService from '../../services/notificationService';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/feedback/EmptyState';
+import { TableSkeleton } from '../../components/feedback/Skeleton';
 
 const roleClassMap = {
   admin: 'bg-purple-50 text-purple-700 border-purple-200',
@@ -40,7 +43,7 @@ const Users = () => {
         }
       } catch {
         if (!cancelled) {
-          toast.error('Failed to load users.');
+          notificationService.error('Failed to load users.');
           setIsLoading(false);
         }
       }
@@ -90,7 +93,7 @@ const Users = () => {
 
   const handleSubmitUser = async (payload) => {
     setIsSubmitting(true);
-    const toastId = toast.loading(activeUser ? 'Updating user...' : 'Creating user...');
+    const toastId = notificationService.loading(activeUser ? 'Updating user...' : 'Creating user...');
 
     try {
       if (activeUser) {
@@ -103,11 +106,11 @@ const Users = () => {
       setIsModalOpen(false);
       setActiveUser(null);
 
-      toast.success(activeUser ? 'User updated successfully.' : 'User created successfully.', {
+      notificationService.success(activeUser ? 'User updated successfully.' : 'User created successfully.', {
         id: toastId,
       });
     } catch (error) {
-      toast.error(error.message || 'Unable to save user details.', { id: toastId });
+      notificationService.error(error.message || 'Unable to save user details.', { id: toastId });
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -115,26 +118,21 @@ const Users = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <Toaster position="top-right" />
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">User Management</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Create employees or managers, assign role, and map reporting relationships.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-        >
-          <UserPlus size={16} />
-          Create User
-        </button>
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title="User Management"
+        description="Create employees or managers, assign roles, and map reporting relationships."
+        actions={(
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+          >
+            <UserPlus size={16} />
+            Create User
+          </button>
+        )}
+      />
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="relative w-full sm:max-w-md">
@@ -153,16 +151,14 @@ const Users = () => {
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="flex min-h-64 items-center justify-center text-slate-500">
-            <span className="h-7 w-7 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          </div>
+          <TableSkeleton rows={8} columns={5} />
         ) : filteredUsers.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <h2 className="text-lg font-semibold text-slate-800">No users found</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Try a different search keyword or create a new user.
-            </p>
-          </div>
+          <EmptyState
+            title="No users found"
+            description="Try a different search keyword or create a new user."
+            actionLabel="Create User"
+            onAction={openCreateModal}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200">

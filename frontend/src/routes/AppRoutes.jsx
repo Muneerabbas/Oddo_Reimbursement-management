@@ -9,9 +9,11 @@ import Signup from '../pages/auth/Signup';
 import DashboardHome from '../pages/dashboard/DashboardHome';
 import MyExpenses from '../pages/expenses/MyExpenses';
 import SubmitExpense from '../pages/expenses/SubmitExpense';
+import ScanReceipt from '../pages/expenses/ScanReceipt';
 import Approvals from '../pages/approvals/Approvals';
 import Users from '../pages/admin/Users';
 import ApprovalRules from '../pages/admin/ApprovalRules';
+import Unauthorized from '../pages/system/Unauthorized';
 
 const AppRoutes = () => {
   return (
@@ -26,6 +28,7 @@ const AppRoutes = () => {
            <Route path="login" element={<Login />} />
            <Route path="signup" element={<Signup />} />
         </Route>
+        <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* Protected Routes inside Main Layout */}
         <Route element={<ProtectedRoute />}>
@@ -36,6 +39,7 @@ const AppRoutes = () => {
             
             <Route path="expenses" element={<MyExpenses />} />
             <Route path="expenses/new" element={<SubmitExpense />} />
+            <Route path="expenses/scan" element={<ScanReceipt />} />
 
             {/* Approvals route accessible by specific roles (e.g. manager) */}
             <Route element={<ProtectedRoute allowedRoles={['manager', 'admin']} />}>

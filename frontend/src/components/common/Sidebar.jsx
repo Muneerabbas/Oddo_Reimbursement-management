@@ -24,8 +24,11 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
     { label: 'Submit Expense', path: '/expenses/new', icon: <PlusCircle size={20} /> },
     { label: 'My Expenses', path: '/expenses', icon: <List size={20} /> },
-    { label: 'Approvals', path: '/approvals', icon: <CheckSquare size={20} /> },
   ];
+
+  if (role === 'manager' || role === 'admin') {
+    navItems.push({ label: 'Approvals', path: '/approvals', icon: <CheckSquare size={20} /> });
+  }
 
   // Insert Admin specific panel conditionally
   if (role === 'admin') {

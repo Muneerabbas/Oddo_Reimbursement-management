@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import StatCard from '../../components/ui/StatCard';
 import dashboardService from '../../services/dashboardService';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/feedback/EmptyState';
+import { StatCardsSkeleton } from '../../components/feedback/Skeleton';
 import { 
   FileText, 
   Clock, 
@@ -42,33 +45,31 @@ const DashboardHome = () => {
 
   if (isLoading) {
      return (
-        <div className="flex h-64 items-center justify-center">
-           <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+        <div className="page-stack">
+          <PageHeader
+            title={`Welcome back, ${user?.name ? user.name.split(' ')[0] : 'User'}`}
+            description="Here's what's happening with your expenses today."
+          />
+          <StatCardsSkeleton />
         </div>
      );
   }
 
   if (error) {
      return (
-        <div className="bg-red-50 border border-red-200 text-red-600 p-6 rounded-lg shadow-sm">
-           <h3 className="font-semibold text-lg mb-2">Error Loading Dashboard</h3>
-           <p>{error}</p>
-        </div>
+        <EmptyState
+          title="Error Loading Dashboard"
+          description={error}
+        />
      );
   }
 
   return (
-    <div className="space-y-6">
-      
-      {/* Header Introduction Area */}
-      <header className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
-          Welcome back, {user?.name ? user.name.split(' ')[0] : 'User'}
-        </h1>
-        <p className="text-sm sm:text-base text-slate-500 mt-2">
-          Here's what's happening with your expenses today.
-        </p>
-      </header>
+    <div className="page-stack">
+      <PageHeader
+        title={`Welcome back, ${user?.name ? user.name.split(' ')[0] : 'User'}`}
+        description="Here's what's happening with your expenses today."
+      />
 
       {/* Primary Analytical Stat Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -113,8 +114,8 @@ const DashboardHome = () => {
       </div>
 
       {/* Generic Placeholder for secondary widgets e.g. "Recent Activity" list */}
-      <section className="mt-12">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-64 flex flex-col items-center justify-center text-slate-400">
+      <section className="mt-6">
+        <div className="panel-card h-64 flex flex-col items-center justify-center text-slate-400">
            <FileText size={48} className="mb-4 opacity-50 text-slate-300" />
            <p className="text-lg font-medium text-slate-500">Recent Activity Area</p>
            <p className="text-sm">A data table can be placed here in the future.</p>

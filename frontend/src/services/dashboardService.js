@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import loadingService from './loadingService';
 
 /**
  * Dashboard Service handling aggregate statistics
@@ -9,20 +9,22 @@ const dashboardService = {
    * Currently mocked to bypass the missing backend implementation.
    */
   getDashboardStats: async () => {
-    // In a real application we would call:
-    // const response = await apiClient.get('/dashboard/stats');
-    // return response.data;
+    return loadingService.withGlobalLoading(async () => {
+      // In a real application we would call:
+      // const response = await apiClient.get('/dashboard/stats');
+      // return response.data;
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
-    // Simulated API response shape
-    return {
-      totalSubmitted: 24,
-      pendingApprovals: 6,
-      approvedAmount: 4320.50, // Stored as numeric cleanly
-      rejectedCount: 2,
-    };
+      // Simulated API response shape
+      return {
+        totalSubmitted: 24,
+        pendingApprovals: 6,
+        approvedAmount: 4320.50, // Stored as numeric cleanly
+        rejectedCount: 2,
+      };
+    });
   },
 };
 

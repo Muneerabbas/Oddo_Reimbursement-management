@@ -85,7 +85,7 @@ const StepBuilder = ({
                 )}
               </div>
               {index < steps.length - 1 && (
-                <span className="text-slate-400 text-xs font-semibold">-&gt;</span>
+                <span className="text-slate-400 text-xs font-semibold">{'->'}</span>
               )}
             </React.Fragment>
           ))}
@@ -154,4 +154,5 @@ const StepBuilder = ({
 };
 
 export default StepBuilder;
+
 
