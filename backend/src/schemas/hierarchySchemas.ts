@@ -6,5 +6,5 @@ export const createReportingLinkSchema = z.object({
 });
 
 export const updateHierarchyTierSchema = z.object({
-  hierarchyTier: z.coerce.number().int().min(0).max(999),
+  hierarchyTier: z.coerce.number().int().min(1).max(999),
 });

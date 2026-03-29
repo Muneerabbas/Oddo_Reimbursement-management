@@ -18,23 +18,18 @@ import { GitBranch, RefreshCw, Sparkles } from 'lucide-react';
 
 const ROW_GAP = 210;
 const COL_GAP = 270;
-
 function layoutNodes(apiNodes) {
   if (!apiNodes.length) return [];
   const tiers = [...new Set(apiNodes.map((n) => n.hierarchyTier))].sort((a, b) => a - b);
-  const maxT = Math.max(...tiers);
   const out = [];
   tiers.forEach((tier, tierIdx) => {
     const row = apiNodes
       .filter((n) => n.hierarchyTier === tier)
       .sort((a, b) => a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' }));
-    
-    // Reverse the index so highest tier is at the top (y=0)
-    const reversedIdx = tiers.length - 1 - tierIdx;
-    
+
     row.forEach((n, i) => {
       const x = (i - (row.length - 1) / 2) * COL_GAP;
-      const y = reversedIdx * ROW_GAP;
+      const y = tierIdx * ROW_GAP;
       out.push({
         id: String(n.id),
         type: 'person',
@@ -72,7 +67,7 @@ const PersonNode = memo(({ data }) => {
     >
       <Handle
         type="target"
-        position={Position.Top}
+        position={Position.Bottom}
         className="!h-3 !w-3 !border-2 !border-white !bg-slate-500"
       />
       <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">
@@ -92,7 +87,7 @@ const PersonNode = memo(({ data }) => {
       </div>
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={Position.Top}
         className="!h-3 !w-3 !border-2 !border-white !bg-primary"
       />
     </div>
@@ -183,8 +178,8 @@ function HierarchyFlowInner({ onRefresh }) {
   const applyTier = async () => {
     if (!selectedNode) return;
     const v = Number(tierDraft);
-    if (!Number.isFinite(v) || v < 0 || v > 999) {
-      toast.error('Tier must be between 0 and 999.');
+    if (!Number.isFinite(v) || v < 1 || v > 999) {
+      toast.error('Tier must be between 1 and 999 for non-admin users.');
       return;
     }
     setSavingTier(true);
@@ -246,16 +241,15 @@ function HierarchyFlowInner({ onRefresh }) {
           </div>
           <ul className="text-sm text-slate-600 space-y-2 leading-relaxed">
             <li>
-              <strong className="text-slate-800">Bottom → top only:</strong> drag from the{' '}
-              <span className="text-primary font-medium">green dot</span> under a report to the{' '}
-              <span className="text-slate-600 font-medium">gray dot</span> on a manager above.
+              <strong className="text-slate-800">Top → bottom only:</strong> drag from the{' '}
+              <span className="text-primary font-medium">green dot</span> on the lower-level person to the{' '}
+              <span className="text-slate-600 font-medium">gray dot</span> on the higher-level person above.
             </li>
             <li>
-              One employee can report to <strong>several</strong> managers; managers can report to
-              multiple leaders.
+              Any non-admin person can report to <strong>several</strong> higher-level people if the tier order stays valid.
             </li>
             <li>
-              <strong>Higher tier</strong> numbers sit on higher rows. Admins stay at the top tier.
+              <strong>Lower tier</strong> numbers sit higher in the chart. Admins stay fixed at tier 0.
             </li>
             <li>
               Select a link and press <kbd className="px-1 py-0.5 rounded bg-slate-100 text-xs">Delete</kbd>{' '}
@@ -280,8 +274,8 @@ function HierarchyFlowInner({ onRefresh }) {
             </button>
           </div>
           <p className="text-xs text-slate-500">
-            Suggested bands: <strong>0</strong> ICs · <strong>10–40</strong> management layers ·{' '}
-            <strong>100</strong> executives (admins fixed at 100).
+            Suggested bands: <strong>1-9</strong> executives · <strong>10-40</strong> management layers ·{' '}
+            <strong>50+</strong> individual contributors (admins fixed at 0).
           </p>
           {selectedNode && selectedNode.systemRole !== 'admin' ? (
             <div className="space-y-3">
@@ -289,7 +283,7 @@ function HierarchyFlowInner({ onRefresh }) {
               <label className="block text-xs font-medium text-slate-600">Hierarchy tier</label>
               <input
                 type="number"
-                min={0}
+                min={1}
                 max={999}
                 value={tierDraft}
                 onChange={(e) => setTierDraft(e.target.value)}
@@ -307,7 +301,7 @@ function HierarchyFlowInner({ onRefresh }) {
           ) : (
             <p className="text-sm text-slate-500">
               {selectedNode?.systemRole === 'admin'
-                ? 'Administrator tier is fixed.'
+                ? 'Administrator tier is fixed at 0.'
                 : 'Click a person to adjust their tier row.'}
             </p>
           )}

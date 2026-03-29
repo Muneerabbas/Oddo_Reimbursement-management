@@ -47,7 +47,7 @@ const Teams = () => {
     name: '',
     baseRole: 'employee',
     permissions: defaultPermissions('employee'),
-    hierarchyTier: 0,
+    hierarchyTier: 10,
   });
 
   const [memberForm, setMemberForm] = useState({
@@ -118,7 +118,11 @@ const Teams = () => {
   );
 
   const rolesOrdered = useMemo(() => {
-    return [...roles].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    return [...roles].sort((a, b) => {
+      const tierDiff = (a.hierarchyTier ?? 999) - (b.hierarchyTier ?? 999);
+      if (tierDiff !== 0) return tierDiff;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
   }, [roles]);
 
   const openCreateRole = () => {
@@ -126,7 +130,7 @@ const Teams = () => {
       name: '',
       baseRole: 'employee',
       permissions: defaultPermissions('employee'),
-      hierarchyTier: 0,
+      hierarchyTier: 10,
     });
     setRoleModal('create');
   };
@@ -154,20 +158,25 @@ const Teams = () => {
       toast.error('Role name is required.');
       return;
     }
+    const nextTier = Number(roleForm.hierarchyTier);
+    if (!Number.isInteger(nextTier) || nextTier < 1 || nextTier > 999) {
+      toast.error('Role tier must be between 1 and 999. Admin stays fixed at tier 0.');
+      return;
+    }
     try {
       if (roleModal === 'create') {
         await teamService.createRole({
           name: roleForm.name.trim(),
           baseRole: roleForm.baseRole,
           permissions: roleForm.permissions,
-          hierarchyTier: Number(roleForm.hierarchyTier)
+          hierarchyTier: nextTier
         });
         toast.success('Role created.');
       } else if (roleModal?.mode === 'edit') {
         await teamService.updateRole(roleModal.id, {
           name: roleForm.name.trim(),
           permissions: roleForm.permissions,
-          hierarchyTier: Number(roleForm.hierarchyTier)
+          hierarchyTier: nextTier
         });
         toast.success('Role updated.');
       }
@@ -608,7 +617,7 @@ const Teams = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Tier</label>
                   <input
                     type="number"
-                    min="0"
+                    min="1"
                     max="999"
                     value={roleForm.hierarchyTier}
                     onChange={(e) => setRoleForm((p) => ({ ...p, hierarchyTier: e.target.value }))}
@@ -617,6 +626,7 @@ const Teams = () => {
                   />
                 </div>
               </div>
+              <p className="text-xs text-slate-500 -mt-2">Lower tier means higher in hierarchy. Admin is fixed at tier 0.</p>
               {roleModal === 'create' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Base access level</label>

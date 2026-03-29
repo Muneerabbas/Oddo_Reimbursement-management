@@ -43,7 +43,7 @@ describe.skipIf(!dbReady)("Hierarchy API (integration)", () => {
 
     const adm = await pool.query<{ id: number }>(
       `INSERT INTO users (company_id, email, password_hash, full_name, role, hierarchy_tier)
-       VALUES ($1, $2, $3, 'Test Admin', 'admin', 100) RETURNING id`,
+       VALUES ($1, $2, $3, 'Test Admin', 'admin', 0) RETURNING id`,
       [companyId, `ht-admin-${suffix}@test.local`, hash],
     );
     adminId = adm.rows[0].id;
@@ -52,21 +52,21 @@ describe.skipIf(!dbReady)("Hierarchy API (integration)", () => {
 
     const mHi = await pool.query<{ id: number }>(
       `INSERT INTO users (company_id, email, password_hash, full_name, role, hierarchy_tier)
-       VALUES ($1, $2, $3, 'Mgr High', 'manager', 70) RETURNING id`,
+       VALUES ($1, $2, $3, 'Mgr High', 'manager', 10) RETURNING id`,
       [companyId, `ht-mgr-hi-${suffix}@test.local`, hash],
     );
     mgrHighId = mHi.rows[0].id;
 
     const mLo = await pool.query<{ id: number }>(
       `INSERT INTO users (company_id, email, password_hash, full_name, role, hierarchy_tier)
-       VALUES ($1, $2, $3, 'Mgr Low', 'manager', 60) RETURNING id`,
+       VALUES ($1, $2, $3, 'Mgr Low', 'manager', 20) RETURNING id`,
       [companyId, `ht-mgr-lo-${suffix}@test.local`, hash],
     );
     mgrLowId = mLo.rows[0].id;
 
     const emp = await pool.query<{ id: number }>(
       `INSERT INTO users (company_id, email, password_hash, full_name, role, hierarchy_tier)
-       VALUES ($1, $2, $3, 'Employee', 'employee', 10) RETURNING id`,
+       VALUES ($1, $2, $3, 'Employee', 'employee', 50) RETURNING id`,
       [companyId, `ht-emp-${suffix}@test.local`, hash],
     );
     empId = emp.rows[0].id;
@@ -89,7 +89,7 @@ describe.skipIf(!dbReady)("Hierarchy API (integration)", () => {
     const h = await request(app).get("/api/teams/hierarchy").set(auth());
     expect(h.status).toBe(200);
     expect(h.body.nodes.length).toBeGreaterThanOrEqual(4);
-    expect(h.body.nodes.find((n: { id: number }) => n.id === empId).hierarchyTier).toBe(10);
+    expect(h.body.nodes.find((n: { id: number }) => n.id === empId).hierarchyTier).toBe(50);
     expect(Array.isArray(h.body.links)).toBe(true);
 
     const createEmpToHigh = await request(app)
@@ -118,7 +118,7 @@ describe.skipIf(!dbReady)("Hierarchy API (integration)", () => {
       [companyId, mgrLowId, mgrHighId],
     );
 
-    await pool.query(`UPDATE users SET hierarchy_tier = 80 WHERE id = $1 AND company_id = $2`, [
+    await pool.query(`UPDATE users SET hierarchy_tier = 5 WHERE id = $1 AND company_id = $2`, [
       mgrLowId,
       companyId,
     ]);
@@ -133,7 +133,7 @@ describe.skipIf(!dbReady)("Hierarchy API (integration)", () => {
     const tierBlock = await request(app)
       .patch(`/api/teams/hierarchy/users/${mgrHighId}/tier`)
       .set(auth())
-      .send({ hierarchyTier: 5 });
+      .send({ hierarchyTier: 25 });
     expect(tierBlock.status).toBe(400);
     expect(String(tierBlock.body.message)).toMatch(/above|subordinate|tier/i);
 
