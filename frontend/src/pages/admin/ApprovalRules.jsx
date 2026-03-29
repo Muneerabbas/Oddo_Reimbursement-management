@@ -15,6 +15,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import { TableSkeleton } from '../../components/feedback/Skeleton';
 import teamService from '../../services/teamService';
 import MultiSelectDropdown from '../../components/ui/MultiSelectDropdown';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 
 const titleCase = (value = '') => value.charAt(0).toUpperCase() + value.slice(1);
 
@@ -60,6 +61,7 @@ const ApprovalRules = () => {
   const [roleOptions, setRoleOptions] = useState([]);
   const [approverOptions, setApproverOptions] = useState([]);
   const [memberOptions, setMemberOptions] = useState([]);
+  const { selectedCurrency, formatAmount } = useContext(CurrencyContext);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,7 +167,7 @@ const ApprovalRules = () => {
       title: `Rule ${index + 1}`,
       summary: rule.triggerMode === 'employee_specific'
         ? `Assigned to: ${(rule.employeeIds || []).map((id) => memberLabelMap.get(id) || `Employee #${id}`).join(', ')}`
-        : `Applies up to Rs ${Number(rule.maxAmount) || 0}`,
+        : `Applies up to ${selectedCurrency} ${Number(rule.maxAmount) || 0}`,
       steps: rule.steps.map((step, stepIndex) => {
         if (step.mode === 'role_percentage') {
           const labels = (step.roleIds || []).map((id) => roleLabelMap.get(id) || `Role #${id}`);
@@ -379,7 +381,7 @@ const ApprovalRules = () => {
                       </label>
                       <div className="flex items-center gap-2">
                         <span className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600">
-                          Rs
+                          {selectedCurrency}
                         </span>
                         <input
                           type="number"

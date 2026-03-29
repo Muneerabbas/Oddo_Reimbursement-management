@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 import {
   Calculator,
   CheckCircle2,
@@ -8,22 +8,9 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { convertCurrencyAmount } from '../../services/currencyService';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 
-const formatCurrencyValue = (amount, currency = 'USD') => {
-  const numeric = Number(amount ?? 0);
-  const safeAmount = Number.isFinite(numeric) ? numeric : 0;
 
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-    }).format(safeAmount);
-  } catch {
-    return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency}`;
-  }
-};
 
 const ApprovalModal = ({
   request,
@@ -33,32 +20,9 @@ const ApprovalModal = ({
   isProcessing,
 }) => {
   const [comment, setComment] = useState('');
-  const [estimatedConversion, setEstimatedConversion] = useState(null);
+  const { selectedCurrency, formatAmount } = useContext(CurrencyContext);
 
-  useEffect(() => {
-    let active = true;
 
-    const run = async () => {
-      if (!request?.amount || !request?.currency || request.currency === 'USD') {
-        setEstimatedConversion(null);
-        return;
-      }
-
-      try {
-        const result = await convertCurrencyAmount(request.amount, request.currency, 'USD');
-        if (!active || !result) return;
-        setEstimatedConversion(`$${result.convertedAmount.toFixed(2)} USD`);
-      } catch {
-        if (!active) return;
-        setEstimatedConversion(null);
-      }
-    };
-
-    void run();
-    return () => {
-      active = false;
-    };
-  }, [request?.amount, request?.currency]);
 
   useEffect(() => {
     if (!request) return undefined;
@@ -75,9 +39,19 @@ const ApprovalModal = ({
   }, [request?.id]);
 
   const requestAmount = useMemo(
-    () => formatCurrencyValue(request?.amount, request?.currency),
-    [request?.amount, request?.currency],
+    () => formatAmount(request?.amount, request?.currency),
+    [request?.amount, request?.currency, formatAmount],
   );
+
+  const originalAmountText = useMemo(() => {
+    if (!request || !request.currency || request.currency === selectedCurrency) return null;
+    const numeric = Number(request.amount ?? 0);
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: request.currency }).format(numeric);
+    } catch {
+      return `${numeric} ${request.currency}`;
+    }
+  }, [request, selectedCurrency]);
 
   if (!request) return null;
 
@@ -120,10 +94,10 @@ const ApprovalModal = ({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Requested Amount</p>
               <p className="mt-1 text-sm font-bold text-slate-900">{requestAmount}</p>
-              {estimatedConversion && (
-                <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-700">
+              {originalAmountText && (
+                <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
                   <Calculator size={12} />
-                  Est. {estimatedConversion}
+                  Original: {originalAmountText}
                 </p>
               )}
             </div>

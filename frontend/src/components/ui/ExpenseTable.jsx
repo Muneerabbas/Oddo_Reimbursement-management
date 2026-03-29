@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 import StatusBadge from './StatusBadge';
 
 const ExpenseTable = ({ 
@@ -10,6 +11,7 @@ const ExpenseTable = ({
   rowsPerPage, 
   onPageChange 
 }) => {
+  const { formatAmount } = useContext(CurrencyContext);
   
   // Isolate mathematical arrays for UI mapping
   const totalPages = Math.ceil(data.length / rowsPerPage);
@@ -55,9 +57,7 @@ const ExpenseTable = ({
                     {expense.description}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
-                    {expense.currency === 'USD' || !expense.currency ? '$' : ''}
-                    {typeof expense.amount === 'number' ? expense.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }) : expense.amount}
-                    {expense.currency && expense.currency !== 'USD' ? ` ${expense.currency}` : ''}
+                    {formatAmount(expense.amount, expense.currency)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button

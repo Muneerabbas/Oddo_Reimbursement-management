@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 import { Funnel, Inbox, RefreshCw, Search, TimerReset, Wallet } from 'lucide-react';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 import expenseService from '../../services/expenseService';
 import ApprovalCard from '../../components/ui/ApprovalCard';
 import ApprovalModal from '../../components/ui/ApprovalModal';
@@ -8,20 +9,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import EmptyState from '../../components/feedback/EmptyState';
 import { CardGridSkeleton } from '../../components/feedback/Skeleton';
 
-const formatCurrencyValue = (amount, currency = 'USD') => {
-  const numeric = Number(amount ?? 0);
-  const safeAmount = Number.isFinite(numeric) ? numeric : 0;
 
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-    }).format(safeAmount);
-  } catch {
-    return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency}`;
-  }
-};
 
 const Approvals = () => {
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -30,6 +18,7 @@ const Approvals = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [activeRequest, setActiveRequest] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { selectedCurrency, convertAmount, formatAmount } = useContext(CurrencyContext);
 
   const fetchApprovalsQueue = async () => {
     setIsLoading(true);
@@ -75,19 +64,12 @@ const Approvals = () => {
   }, [pendingRequests, searchQuery, categoryFilter]);
 
   const queueStats = useMemo(() => {
-    const totalsByCurrencyMap = new Map();
+    let totalValue = 0;
     filteredQueue.forEach((request) => {
       const amount = Number(request.amount ?? 0);
       const safeAmount = Number.isFinite(amount) ? amount : 0;
-      const currency = request.currency || 'USD';
-      totalsByCurrencyMap.set(currency, (totalsByCurrencyMap.get(currency) || 0) + safeAmount);
+      totalValue += convertAmount(safeAmount, request.currency || 'USD');
     });
-    const totalsByCurrency = [...totalsByCurrencyMap.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([currency, total]) => ({
-        currency,
-        total,
-      }));
 
     const oldest = filteredQueue.length > 0
       ? filteredQueue.reduce((oldestDate, item) => {
@@ -98,10 +80,10 @@ const Approvals = () => {
 
     return {
       totalCount: filteredQueue.length,
-      totalsByCurrency,
+      totalValue,
       oldest,
     };
-  }, [filteredQueue]);
+  }, [filteredQueue, convertAmount]);
 
   const handleResolveAction = async (id, action, comment) => {
     if (action === 'Rejected' && !comment.trim()) {
@@ -160,19 +142,13 @@ const Approvals = () => {
         <div className="panel-card p-4">
           <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
             <Wallet size={12} />
-            Value By Currency
+            Total Value
           </p>
-          {queueStats.totalsByCurrency.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {queueStats.totalsByCurrency.slice(0, 3).map((item) => (
-                <span key={item.currency} className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800">
-                  {formatCurrencyValue(item.total, item.currency)}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-2 text-2xl font-bold text-slate-900">-</p>
-          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800">
+                {formatAmount(queueStats.totalValue, selectedCurrency)}
+             </span>
+          </div>
         </div>
         <div className="panel-card p-4">
           <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">

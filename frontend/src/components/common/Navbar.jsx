@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { CurrencyContext } from '../../contexts/CurrencyContext';
 import { Menu, LogOut, User } from 'lucide-react';
 import notificationService from '../../services/notificationService';
 import NotificationBell from './NotificationBell';
 
 const Navbar = ({ toggleMobileMenu }) => {
-  const { user, role, logout } = useAuth(); // Pull global session context
+  const { user, role, logout } = useAuth();
+  const { selectedCurrency, setSelectedCurrency, currencyOptions } = useContext(CurrencyContext);
 
   const handleLogout = () => {
     logout();
@@ -32,6 +34,24 @@ const Navbar = ({ toggleMobileMenu }) => {
       {/* Right side: User Profile, Role Badge, Logout */}
       <div className="flex items-center gap-4 sm:gap-6 ml-auto">
         
+        {/* Currency Display / Selector */}
+        {currencyOptions && currencyOptions.length > 0 && (
+          <div className="hidden sm:flex items-center">
+            <select
+              value={selectedCurrency || 'USD'}
+              onChange={(e) => setSelectedCurrency(e.target.value)}
+              className="bg-slate-50 border border-slate-200 text-slate-700 font-medium text-xs rounded-lg focus:ring-primary focus:border-primary block w-auto p-1.5 focus:outline-none transition-colors shadow-sm hover:border-slate-300"
+              title="Global Currency Display"
+            >
+              {currencyOptions.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} ({c.symbol})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Role Badge - Hidden on very small screens for cleanliness */}
         {role && (
           <span className="hidden sm:inline-block px-3 py-1 bg-primary/10 text-primary font-bold text-xs rounded-full uppercase tracking-wide">

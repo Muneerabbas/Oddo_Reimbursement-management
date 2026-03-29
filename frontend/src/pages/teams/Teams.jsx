@@ -33,15 +33,6 @@ function permissionSummary(role) {
   return labels.length ? labels.join(' · ') : '—';
 }
 
-const primaryActionClass =
-  'inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98]';
-
-const iconButtonBaseClass =
-  'inline-flex items-center justify-center rounded-md border px-2 py-2 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.96]';
-
-const neutralIconButtonClass = `${iconButtonBaseClass} border-slate-200 bg-white text-slate-500 shadow-sm hover:border-slate-300 hover:bg-slate-100 hover:text-primary hover:shadow-md focus-visible:ring-primary/25`;
-const dangerIconButtonClass = `${iconButtonBaseClass} border-red-100 bg-white text-slate-500 shadow-sm hover:border-red-200 hover:bg-red-50 hover:text-red-600 hover:shadow-md focus-visible:ring-red-200`;
-
 const Teams = () => {
   const [roles, setRoles] = useState([]);
   const [members, setMembers] = useState([]);
@@ -298,18 +289,16 @@ const Teams = () => {
           <button
             type="button"
             onClick={() => openEditMember(m)}
-            className={neutralIconButtonClass}
+            className="p-1.5 text-slate-500 hover:text-primary rounded-md hover:bg-slate-100"
             title="Edit"
-            aria-label={`Edit ${m.fullName}`}
           >
             <Pencil size={16} />
           </button>
           <button
             type="button"
             onClick={() => removeMember(m)}
-            className={dangerIconButtonClass}
+            className="p-1.5 text-slate-500 hover:text-red-600 rounded-md hover:bg-red-50"
             title="Remove"
-            aria-label={`Remove ${m.fullName}`}
           >
             <Trash2 size={16} />
           </button>
@@ -342,22 +331,20 @@ const Teams = () => {
           <button
             type="button"
             onClick={() => setTeamsView('people')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              teamsView === 'people'
-                ? 'bg-white text-slate-900 shadow-md'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${teamsView === 'people'
+              ? 'bg-white text-slate-900 shadow-md'
+              : 'text-slate-500 hover:text-slate-800'
+              }`}
           >
             People &amp; roles
           </button>
           <button
             type="button"
             onClick={() => setTeamsView('assign')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 ${
-              teamsView === 'assign'
-                ? 'bg-white text-slate-900 shadow-md'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 ${teamsView === 'assign'
+              ? 'bg-white text-slate-900 shadow-md'
+              : 'text-slate-500 hover:text-slate-800'
+              }`}
           >
             <GitBranch size={16} aria-hidden />
             Assign hierarchy
@@ -377,143 +364,82 @@ const Teams = () => {
         </Suspense>
       ) : (
         <>
-      {/* —— Role definitions: its own block (not mixed with member rows) —— */}
-      <section className="space-y-3" aria-labelledby="role-definitions-heading">
-        <div className="flex items-center gap-2 text-slate-800">
-          <Settings2 size={20} className="text-slate-500" />
-          <h2 id="role-definitions-heading" className="text-lg font-semibold">
-            Role definitions
-          </h2>
-        </div>
-        <p className="text-xs text-slate-500">
-          Names, base access level, and permissions. This table is only for role setup—not for listing
-          people.
-        </p>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex justify-end">
-            <button
-              type="button"
-              onClick={openCreateRole}
-              className={primaryActionClass}
-            >
-              <Plus size={18} />
-              New role
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Role name</th>
-                  <th className="px-4 py-3 font-medium">Tier</th>
-                  <th className="px-4 py-3 font-medium">Base access</th>
-                  <th className="px-4 py-3 font-medium">Permissions</th>
-                  <th className="px-4 py-3 font-medium w-28">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rolesOrdered.map((role) => (
-                  <tr key={role.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-medium text-slate-900">{role.name}</td>
-                    <td className="px-4 py-3 text-slate-600 font-mono text-sm">{role.hierarchyTier}</td>
-                    <td className="px-4 py-3 capitalize text-slate-600">{role.baseRole}</td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{permissionSummary(role)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openEditRole(role)}
-                          className={neutralIconButtonClass}
-                          title="Edit role"
-                          aria-label={`Edit role ${role.name}`}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeRole(role)}
-                          className={dangerIconButtonClass}
-                          title="Delete role"
-                          aria-label={`Delete role ${role.name}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {/* —— Administrators: separate table —— */}
-      <section className="space-y-3" aria-labelledby="admins-heading">
-        <h2 id="admins-heading" className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-          <ShieldCheck size={20} className="text-purple-600" />
-          Administrators
-        </h2>
-        <p className="text-xs text-slate-500">Company admins (created at registration). Not editable here.</p>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {adminMembers.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-slate-400 text-sm">
-                      No administrators listed.
-                    </td>
-                  </tr>
-                ) : (
-                  adminMembers.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50/80">
-                      <td className="px-4 py-3 font-medium text-slate-900">{m.fullName}</td>
-                      <td className="px-4 py-3 text-slate-600">{m.email}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">—</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {/* —— One member table per role, stacked —— */}
-      {rolesOrdered.map((role) => {
-        const rows = membersByRoleId.get(role.id) ?? [];
-        const showManager = role.baseRole === 'employee';
-        return (
-          <section key={role.id} className="space-y-3" aria-labelledby={`role-members-${role.id}`}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2
-                  id={`role-members-${role.id}`}
-                  className="text-lg font-semibold text-slate-800"
-                >
-                  {role.name}
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5 capitalize">
-                  Base: {role.baseRole} · {rows.length} member{rows.length === 1 ? '' : 's'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => openCreateMemberForRole(role)}
-                className={`${primaryActionClass} shrink-0`}
-              >
-                <Plus size={18} />
-                Add to this role
-              </button>
+          {/* —— Role definitions: its own block (not mixed with member rows) —— */}
+          <section className="space-y-3" aria-labelledby="role-definitions-heading">
+            <div className="flex items-center gap-2 text-slate-800">
+              <Settings2 size={20} className="text-slate-500" />
+              <h2 id="role-definitions-heading" className="text-lg font-semibold">
+                Role definitions
+              </h2>
             </div>
+            <p className="text-xs text-slate-500">
+              Names, base access level, and permissions. This table is only for role setup—not for listing
+              people.
+            </p>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={openCreateRole}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
+                >
+                  <Plus size={18} />
+                  New role
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 text-slate-600">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Role name</th>
+                      <th className="px-4 py-3 font-medium">Tier</th>
+                      <th className="px-4 py-3 font-medium">Base access</th>
+                      <th className="px-4 py-3 font-medium">Permissions</th>
+                      <th className="px-4 py-3 font-medium w-28">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {rolesOrdered.map((role) => (
+                      <tr key={role.id} className="hover:bg-slate-50/80">
+                        <td className="px-4 py-3 font-medium text-slate-900">{role.name}</td>
+                        <td className="px-4 py-3 text-slate-600 font-mono text-sm">{role.hierarchyTier}</td>
+                        <td className="px-4 py-3 capitalize text-slate-600">{role.baseRole}</td>
+                        <td className="px-4 py-3 text-slate-500 text-xs">{permissionSummary(role)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openEditRole(role)}
+                              className="p-1.5 text-slate-500 hover:text-primary rounded-md hover:bg-slate-100"
+                              title="Edit role"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeRole(role)}
+                              className="p-1.5 text-slate-500 hover:text-red-600 rounded-md hover:bg-red-50"
+                              title="Delete role"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          {/* —— Administrators: separate table —— */}
+          <section className="space-y-3" aria-labelledby="admins-heading">
+            <h2 id="admins-heading" className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              <ShieldCheck size={20} className="text-purple-600" />
+              Administrators
+            </h2>
+            <p className="text-xs text-slate-500">Company admins (created at registration). Not editable here.</p>
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -521,23 +447,23 @@ const Teams = () => {
                     <tr>
                       <th className="px-4 py-3 font-medium">Name</th>
                       <th className="px-4 py-3 font-medium">Email</th>
-                      {showManager && <th className="px-4 py-3 font-medium">Line manager</th>}
-                      <th className="px-4 py-3 font-medium w-28">Actions</th>
+                      <th className="px-4 py-3 font-medium w-24">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {rows.length === 0 ? (
+                    {adminMembers.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={showManager ? 4 : 3}
-                          className="px-4 py-8 text-center text-slate-400 text-sm"
-                        >
-                          No members in this role yet.
+                        <td colSpan={3} className="px-4 py-8 text-center text-slate-400 text-sm">
+                          No administrators listed.
                         </td>
                       </tr>
                     ) : (
-                      rows.map((m) => (
-                        <MemberRow key={m.id} m={m} showManagerCol={showManager} />
+                      adminMembers.map((m) => (
+                        <tr key={m.id} className="hover:bg-slate-50/80">
+                          <td className="px-4 py-3 font-medium text-slate-900">{m.fullName}</td>
+                          <td className="px-4 py-3 text-slate-600">{m.email}</td>
+                          <td className="px-4 py-3 text-xs text-slate-400">—</td>
+                        </tr>
                       ))
                     )}
                   </tbody>
@@ -545,62 +471,119 @@ const Teams = () => {
               </div>
             </div>
           </section>
-        );
-      })}
 
-      {unassignedMembers.length > 0 && (
-        <section className="space-y-3" aria-labelledby="unassigned-heading">
-          <h2 id="unassigned-heading" className="text-lg font-semibold text-amber-800">
-            Without a team role
-          </h2>
-          <p className="text-xs text-slate-500">
-            These users are not admins and have no company role assigned. Assign a role via Edit.
-          </p>
-          <div className="bg-amber-50/50 rounded-xl border border-amber-200/80 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-amber-100/60 text-amber-900">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Name</th>
-                    <th className="px-4 py-3 font-medium">Email</th>
-                    <th className="px-4 py-3 font-medium">System</th>
-                    <th className="px-4 py-3 font-medium w-28">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-amber-100 bg-white">
-                  {unassignedMembers.map((m) => (
-                    <tr key={m.id} className="hover:bg-amber-50/40">
-                      <td className="px-4 py-3 font-medium text-slate-900">{m.fullName}</td>
-                      <td className="px-4 py-3 text-slate-600">{m.email}</td>
-                      <td className="px-4 py-3 capitalize text-slate-600">{m.systemRole}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditMember(m)}
-                            className={neutralIconButtonClass}
-                            aria-label={`Edit ${m.fullName}`}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeMember(m)}
-                            className={dangerIconButtonClass}
-                            aria-label={`Remove ${m.fullName}`}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      )}
+          {/* —— One member table per role, stacked —— */}
+          {rolesOrdered.map((role) => {
+            const rows = membersByRoleId.get(role.id) ?? [];
+            const showManager = role.baseRole === 'employee';
+            return (
+              <section key={role.id} className="space-y-3" aria-labelledby={`role-members-${role.id}`}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h2
+                      id={`role-members-${role.id}`}
+                      className="text-lg font-semibold text-slate-800"
+                    >
+                      {role.name}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5 capitalize">
+                      Base: {role.baseRole} · {rows.length} member{rows.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openCreateMemberForRole(role)}
+                    className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark shrink-0"
+                  >
+                    <Plus size={18} />
+                    Add to this role
+                  </button>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-50 text-slate-600">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Name</th>
+                          <th className="px-4 py-3 font-medium">Email</th>
+                          {showManager && <th className="px-4 py-3 font-medium">Line manager</th>}
+                          <th className="px-4 py-3 font-medium w-28">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {rows.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={showManager ? 4 : 3}
+                              className="px-4 py-8 text-center text-slate-400 text-sm"
+                            >
+                              No members in this role yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          rows.map((m) => (
+                            <MemberRow key={m.id} m={m} showManagerCol={showManager} />
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+            );
+          })}
+
+          {unassignedMembers.length > 0 && (
+            <section className="space-y-3" aria-labelledby="unassigned-heading">
+              <h2 id="unassigned-heading" className="text-lg font-semibold text-amber-800">
+                Without a team role
+              </h2>
+              <p className="text-xs text-slate-500">
+                These users are not admins and have no company role assigned. Assign a role via Edit.
+              </p>
+              <div className="bg-amber-50/50 rounded-xl border border-amber-200/80 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-amber-100/60 text-amber-900">
+                      <tr>
+                        <th className="px-4 py-3 font-medium">Name</th>
+                        <th className="px-4 py-3 font-medium">Email</th>
+                        <th className="px-4 py-3 font-medium">System</th>
+                        <th className="px-4 py-3 font-medium w-28">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-100 bg-white">
+                      {unassignedMembers.map((m) => (
+                        <tr key={m.id} className="hover:bg-amber-50/40">
+                          <td className="px-4 py-3 font-medium text-slate-900">{m.fullName}</td>
+                          <td className="px-4 py-3 text-slate-600">{m.email}</td>
+                          <td className="px-4 py-3 capitalize text-slate-600">{m.systemRole}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openEditMember(m)}
+                                className="p-1.5 text-slate-500 hover:text-primary rounded-md hover:bg-slate-100"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeMember(m)}
+                                className="p-1.5 text-slate-500 hover:text-red-600 rounded-md hover:bg-red-50"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
         </>
       )}
 
