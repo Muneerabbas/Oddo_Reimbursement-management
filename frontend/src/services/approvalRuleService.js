@@ -1,36 +1,44 @@
+import apiClient from './apiClient';
 import loadingService from './loadingService';
 
-const MOCK_DELAY = 550;
+function pickMessage(error) {
+  const data = error.response?.data;
+  if (data && typeof data.message === 'string') return data.message;
+  if (Array.isArray(data?.errors) && data.errors[0]?.message) return data.errors[0].message;
+  return error.message || 'Request failed';
+}
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const clone = (value) => JSON.parse(JSON.stringify(value));
+function toHttpError(error) {
+  return Object.assign(new Error(pickMessage(error)), {
+    response: error.response,
+    code: error.code,
+  });
+}
 
-let storedRuleConfig = {
-  steps: [
-    { id: 'step-1', approverId: 'APR-101' },
-    { id: 'step-2', approverId: 'APR-102' },
-    { id: 'step-3', approverId: 'APR-103' },
-  ],
-  percentageThreshold: 65,
-  specificApproverId: 'APR-104',
-  isHybridRuleEnabled: true,
-};
+async function request(fn) {
+  try {
+    return await fn();
+  } catch (error) {
+    throw toHttpError(error);
+  }
+}
 
 const approvalRuleService = {
-  getApprovalRuleConfig: async () => {
-    return loadingService.withGlobalLoading(async () => {
-      await wait(MOCK_DELAY);
-      return clone(storedRuleConfig);
-    });
-  },
+  getApprovalRuleConfig: async () => (
+    loadingService.withGlobalLoading(() => request(async () => {
+      const { data } = await apiClient.get('/approval-rules');
+      return {
+        rules: Array.isArray(data.rules) ? data.rules : [],
+      };
+    }))
+  ),
 
-  saveApprovalRuleConfig: async (payload) => {
-    return loadingService.withGlobalLoading(async () => {
-      await wait(MOCK_DELAY);
-      storedRuleConfig = clone(payload);
-      return { success: true };
-    });
-  },
+  saveApprovalRuleConfig: async (payload) => (
+    loadingService.withGlobalLoading(() => request(async () => {
+      const { data } = await apiClient.put('/approval-rules', payload);
+      return data;
+    }))
+  ),
 };
 
 export default approvalRuleService;

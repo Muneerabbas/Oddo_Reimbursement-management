@@ -5,6 +5,7 @@ import authRoutes from "./routes/authRoutes";
 import teamRoutes from "./routes/teamRoutes";
 import expenseRoutes from "./routes/expenseRoutes";
 import billRoutes from "./routes/billRoutes";
+import approvalRuleRoutes from "./routes/approvalRuleRoutes";
 import { env } from "./config/env";
 
 export function createApp(): express.Application {
@@ -17,6 +18,7 @@ export function createApp(): express.Application {
   app.use("/api", healthRoutes);
   app.use("/api", billRoutes);
   app.use("/api", expenseRoutes);
+  app.use("/api", approvalRuleRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/teams", teamRoutes);
 
