@@ -24,6 +24,25 @@ type ExpenseSubmissionRow = {
   created_at: string;
 };
 
+type ExpenseLogRow = {
+  id: number;
+  expense_date: string;
+  category: string;
+  description: string;
+  amount: string;
+  currency: string;
+  status: string;
+  receipt_file_name: string;
+  created_at: string;
+  employee_id: number;
+  employee_name: string;
+  employee_email: string;
+  reviewed_by: number | null;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+  approval_comment: string | null;
+};
+
 type ExpenseDocumentRow = {
   id: number;
   receipt_file_name: string;
@@ -121,6 +140,25 @@ const mapExpenseSubmissionRow = (row: ExpenseSubmissionRow) => ({
   createdAt: row.created_at,
 });
 
+const mapExpenseLogRow = (row: ExpenseLogRow) => ({
+  id: `EXP-${row.id}`,
+  date: row.expense_date,
+  category: row.category,
+  description: row.description,
+  amount: Number(row.amount),
+  currency: row.currency,
+  status: formatStatus(row.status),
+  receiptFileName: row.receipt_file_name,
+  createdAt: row.created_at,
+  employeeId: row.employee_id,
+  employeeName: row.employee_name,
+  employeeEmail: row.employee_email,
+  reviewedById: row.reviewed_by,
+  reviewedByName: row.reviewed_by_name,
+  reviewedAt: row.reviewed_at,
+  approvalComment: row.approval_comment ?? "",
+});
+
 const mapPendingApprovalRow = (row: PendingApprovalRow, reviewerRole: string) => ({
   id: `EXP-${row.id}`,
   date: row.expense_date,
@@ -214,6 +252,105 @@ export const listExpenseSubmissionsForUser = async (companyId: number, employeeI
   );
 
   return result.rows.map(mapExpenseSubmissionRow);
+};
+
+export const listExpenseLogsForViewer = async (
+  companyId: number,
+  viewerId: number,
+  viewerRole: string,
+) => {
+  await ensureExpenseSubmissionsTableExists();
+  const normalizedRole = normalizeRole(viewerRole);
+
+  if (isAdminRole(normalizedRole)) {
+    const result = await pool.query<ExpenseLogRow>(
+      `
+        SELECT
+          es.id,
+          es.expense_date,
+          es.category,
+          es.description,
+          es.amount,
+          es.currency,
+          es.status,
+          es.receipt_file_name,
+          es.created_at,
+          u.id AS employee_id,
+          u.full_name AS employee_name,
+          u.email AS employee_email,
+          es.reviewed_by,
+          rv.full_name AS reviewed_by_name,
+          es.reviewed_at,
+          es.approval_comment
+        FROM expense_submissions es
+        JOIN users u
+          ON u.id = es.employee_id
+         AND u.company_id = es.company_id
+        LEFT JOIN users rv
+          ON rv.id = es.reviewed_by
+         AND rv.company_id = es.company_id
+        WHERE es.company_id = $1
+        ORDER BY COALESCE(es.reviewed_at, es.created_at) DESC, es.id DESC
+      `,
+      [companyId],
+    );
+
+    return result.rows.map(mapExpenseLogRow);
+  }
+
+  if (isManagerRole(normalizedRole)) {
+    const result = await pool.query<ExpenseLogRow>(
+      `
+        WITH RECURSIVE scope AS (
+          SELECT rl.subordinate_id
+          FROM reporting_links rl
+          WHERE rl.company_id = $1
+            AND rl.supervisor_id = $2
+          UNION
+          SELECT rl.subordinate_id
+          FROM reporting_links rl
+          JOIN scope s
+            ON s.subordinate_id = rl.supervisor_id
+          WHERE rl.company_id = $1
+        )
+        SELECT
+          es.id,
+          es.expense_date,
+          es.category,
+          es.description,
+          es.amount,
+          es.currency,
+          es.status,
+          es.receipt_file_name,
+          es.created_at,
+          u.id AS employee_id,
+          u.full_name AS employee_name,
+          u.email AS employee_email,
+          es.reviewed_by,
+          rv.full_name AS reviewed_by_name,
+          es.reviewed_at,
+          es.approval_comment
+        FROM expense_submissions es
+        JOIN users u
+          ON u.id = es.employee_id
+         AND u.company_id = es.company_id
+        LEFT JOIN users rv
+          ON rv.id = es.reviewed_by
+         AND rv.company_id = es.company_id
+        WHERE es.company_id = $1
+          AND (
+            es.employee_id = $2
+            OR es.employee_id IN (SELECT subordinate_id FROM scope)
+          )
+        ORDER BY COALESCE(es.reviewed_at, es.created_at) DESC, es.id DESC
+      `,
+      [companyId, viewerId],
+    );
+
+    return result.rows.map(mapExpenseLogRow);
+  }
+
+  return [];
 };
 
 export const listPendingApprovalsForReviewer = async (
@@ -473,4 +610,3 @@ export const getExpenseSubmissionDocumentForViewer = async (
 
   return result.rows[0] ?? null;
 };
-

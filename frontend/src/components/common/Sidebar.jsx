@@ -22,11 +22,12 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
   const isEmployee = normalizedRole === 'employee';
   const isManagerLike = !isAdmin && !isEmployee;
 
-  // Keep admin/employee behavior unchanged. Manager-like roles get logs and no My Expenses nav item.
+  // Employees keep expense flow. Admins use logs. Manager-like roles get workflow logs.
   const primaryNavItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, exact: true },
     ...(isEmployee ? [{ label: 'Submit Expense', path: '/expenses/new', icon: PlusCircle }] : []),
-    ...((isEmployee || isAdmin) ? [{ label: 'Expenses', path: '/expenses', icon: List, exact: true }] : []),
+    ...(isEmployee ? [{ label: 'Expenses', path: '/expenses', icon: List, exact: true }] : []),
+    ...(isAdmin ? [{ label: 'Logs', path: '/logs', icon: ScrollText, exact: true }] : []),
   ];
 
   const workflowNavItems = [];

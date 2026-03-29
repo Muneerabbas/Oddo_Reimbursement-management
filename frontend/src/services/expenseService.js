@@ -95,6 +95,13 @@ const expenseService = {
     });
   },
 
+  getExpenseLogs: async () => {
+    return loadingService.withGlobalLoading(async () => {
+      const { data } = await apiClient.get('/expenses/logs');
+      return data.logs || [];
+    });
+  },
+
   exportExpensesCsv: (expenses) => {
     if (!Array.isArray(expenses) || expenses.length === 0) {
       throw new Error('There are no expenses to export.');

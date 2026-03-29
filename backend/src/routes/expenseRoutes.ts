@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   createExpense,
   extractExpenseFromReceipt,
+  listExpenseLogs,
   listExpenses,
   listPendingApprovals,
   resolveExpenseApproval,
@@ -15,6 +16,7 @@ import { uploadExpenseReceipt } from "../middleware/expenseUpload";
 const router = Router();
 
 router.get("/expenses", requireAuth, listExpenses);
+router.get("/expenses/logs", requireAuth, listExpenseLogs);
 router.get("/expenses/approvals/pending", requireAuth, listPendingApprovals);
 router.get("/expenses/:expenseId/document", requireAuth, viewExpenseDocument);
 router.patch("/expenses/:expenseId/approval", requireAuth, resolveExpenseApproval);

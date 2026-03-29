@@ -9,6 +9,7 @@ import {
 import {
   createExpenseSubmission,
   getExpenseSubmissionDocumentForViewer,
+  listExpenseLogsForViewer,
   listPendingApprovalsForReviewer,
   listExpenseSubmissionsForUser,
   resolvePendingApproval,
@@ -145,6 +146,26 @@ export async function listExpenses(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error("listExpenses", error);
     res.status(500).json({ message: "Could not load expenses." });
+  }
+}
+
+export async function listExpenseLogs(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.auth) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
+    }
+
+    if (!isReviewerRole(req.auth.role)) {
+      res.status(403).json({ message: "Manager or admin access required." });
+      return;
+    }
+
+    const logs = await listExpenseLogsForViewer(req.auth.companyId, req.auth.userId, req.auth.role);
+    res.json({ logs });
+  } catch (error) {
+    console.error("listExpenseLogs", error);
+    res.status(500).json({ message: "Could not load logs." });
   }
 }
 
