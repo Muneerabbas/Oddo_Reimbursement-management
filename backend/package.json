@@ -9,7 +9,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "db:test": "ts-node src/utils/testDbConnection.ts"
+    "db:test": "ts-node src/utils/testDbConnection.ts",
+    "db:init": "ts-node src/utils/runSqlFile.ts db/init.sql",
+    "db:migrate:002": "ts-node src/utils/runSqlFile.ts db/migrate_002_company_profile_and_teams.sql"
   },
   "keywords": [],
   "author": "",
