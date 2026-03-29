@@ -1,5 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  AtSign,
+  Building2,
+  Eye,
+  EyeOff,
+  Globe2,
+  Info,
+  LockKeyhole,
+  Phone,
+  User2,
+  Workflow,
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import authService from '../../services/authService';
 
@@ -20,6 +32,7 @@ const SignupForm = () => {
   });
 
   const [countries, setCountries] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
   const [fetchingCountries, setFetchingCountries] = useState(true);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,99 +107,121 @@ const SignupForm = () => {
 
   return (
     <div className="w-full">
-      <h2 className="mb-2 text-center text-xl font-bold text-slate-800">Create your workspace</h2>
-      <p className="mb-6 text-center text-sm text-slate-500">
-        Register your organization. Default currency follows the country you select. You will be the
-        company administrator.
-      </p>
+      <div className="mb-6 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
+        <p className="auth-copy text-sm text-cyan-900">
+          Required fields first. You can enrich your company profile below.
+        </p>
+      </div>
 
       {error && (
-        <div className="mb-4 rounded border-l-4 border-red-500 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           <p className="font-medium">Registration failed</p>
           <p>{error}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="name">
-            Your full name
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            placeholder="Jane Doe"
-            value={formData.name}
-            onChange={handleChange}
-            disabled={isLoading}
-            required
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-slate-50"
-          />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="name">
+              Your full name
+            </label>
+            <div className="relative">
+              <User2 size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Jane Doe"
+                value={formData.name}
+                onChange={handleChange}
+                disabled={isLoading}
+                required
+                className="auth-input w-full pl-10 disabled:bg-slate-100"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="email">
+              Business email
+            </label>
+            <div className="relative">
+              <AtSign size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@company.com"
+                value={formData.email}
+                onChange={handleChange}
+                disabled={isLoading}
+                required
+                className="auth-input w-full pl-10 disabled:bg-slate-100"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="country">
+              Company country
+            </label>
+            <div className="relative">
+              <Globe2 size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <select
+                id="country"
+                name="country"
+                value={formData.country}
+                onChange={handleChange}
+                disabled={isLoading || fetchingCountries}
+                required
+                className={`auth-input w-full appearance-none pl-10 disabled:bg-slate-100 ${
+                  !formData.country ? 'text-slate-400' : 'text-slate-900'
+                }`}
+              >
+                <option value="" disabled>Select country (sets workspace currency)...</option>
+                {countries.map((country) => (
+                  <option key={country.cca2} value={country.cca2}>
+                    {country.name.common}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {fetchingCountries && (
+              <p className="mt-1 pl-1 text-xs text-slate-400">Loading countries...</p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="password">
+              Password
+            </label>
+            <div className="relative">
+              <LockKeyhole size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Minimum 6 characters"
+                value={formData.password}
+                onChange={handleChange}
+                disabled={isLoading}
+                required
+                className="auth-input w-full pl-10 pr-12 disabled:bg-slate-100"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-700"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="email">
-            Business email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="you@company.com"
-            value={formData.email}
-            onChange={handleChange}
-            disabled={isLoading}
-            required
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-slate-50"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="country">
-            Company country
-          </label>
-          <select
-            id="country"
-            name="country"
-            value={formData.country}
-            onChange={handleChange}
-            disabled={isLoading || fetchingCountries}
-            required
-            className={`w-full rounded-lg border border-slate-300 bg-white px-4 py-2 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-slate-50 ${
-              !formData.country ? 'text-slate-400' : 'text-slate-900'
-            }`}
-          >
-            <option value="" disabled>Select country (sets workspace currency)...</option>
-            {countries.map((country) => (
-              <option key={country.cca2} value={country.cca2}>
-                {country.name.common}
-              </option>
-            ))}
-          </select>
-          {fetchingCountries && (
-            <p className="mt-1 pl-1 text-xs text-slate-400">Loading countries...</p>
-          )}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="password">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="********"
-            value={formData.password}
-            onChange={handleChange}
-            disabled={isLoading}
-            required
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-slate-50"
-          />
-        </div>
-
-        <div className="border-t border-slate-200 pt-2">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Company profile (optional)
           </p>
@@ -196,16 +231,19 @@ const SignupForm = () => {
               <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="companyName">
                 Legal / display company name
               </label>
-              <input
-                id="companyName"
-                name="companyName"
-                type="text"
-                placeholder="Leave blank to default from your name"
-                value={formData.companyName}
-                onChange={handleChange}
-                disabled={isLoading}
-                className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <div className="relative">
+                <Building2 size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="companyName"
+                  name="companyName"
+                  type="text"
+                  placeholder="Leave blank to default from your name"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="auth-input w-full pl-10"
+                />
+              </div>
             </div>
 
             <div>
@@ -220,7 +258,7 @@ const SignupForm = () => {
                 value={formData.companyAbout}
                 onChange={handleChange}
                 disabled={isLoading}
-                className="w-full resize-y rounded-lg border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                className="auth-input w-full resize-y"
               />
             </div>
 
@@ -237,23 +275,26 @@ const SignupForm = () => {
                   value={formData.companyIndustry}
                   onChange={handleChange}
                   disabled={isLoading}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="auth-input w-full"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="companyPhone">
                   Phone
                 </label>
-                <input
-                  id="companyPhone"
-                  name="companyPhone"
-                  type="tel"
-                  placeholder="+1 ..."
-                  value={formData.companyPhone}
-                  onChange={handleChange}
-                  disabled={isLoading}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                <div className="relative">
+                  <Phone size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="companyPhone"
+                    name="companyPhone"
+                    type="tel"
+                    placeholder="+1 ..."
+                    value={formData.companyPhone}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                    className="auth-input w-full pl-10"
+                  />
+                </div>
               </div>
             </div>
 
@@ -269,16 +310,21 @@ const SignupForm = () => {
                 value={formData.companyWebsite}
                 onChange={handleChange}
                 disabled={isLoading}
-                className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                className="auth-input w-full"
               />
             </div>
           </div>
         </div>
 
+        <div className="auth-copy flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
+          <Info size={14} className="shrink-0" />
+          Currency is automatically assigned from your selected country and can be adjusted later by admins.
+        </div>
+
         <button
           type="submit"
           disabled={isLoading || fetchingCountries}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(120deg,_#0f172a_0%,_#1d4ed8_100%)] px-4 py-2.5 font-semibold text-white shadow-md shadow-blue-200/70 transition-all hover:translate-y-[-1px] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isLoading ? (
             <>
@@ -286,7 +332,10 @@ const SignupForm = () => {
               <span>Creating workspace...</span>
             </>
           ) : (
-            'Register organization'
+            <span className="inline-flex items-center gap-2">
+              <Workflow size={16} />
+              Register organization
+            </span>
           )}
         </button>
       </form>

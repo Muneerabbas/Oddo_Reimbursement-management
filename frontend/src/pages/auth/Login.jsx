@@ -7,7 +7,7 @@ const Login = () => {
     <div className="flex flex-col items-center">
        <LoginForm />
        
-       <div className="mt-8 text-center text-sm text-slate-600">
+       <div className="auth-copy mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
          Don't have an account yet?{' '}
          <Link to="/auth/signup" className="font-semibold text-primary hover:text-primary-dark transition-colors">
             Register your company
