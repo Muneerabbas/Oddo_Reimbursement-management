@@ -7,7 +7,7 @@ import AuthLayout from '../layouts/AuthLayout';
 import Login from '../pages/auth/Login';
 import Signup from '../pages/auth/Signup';
 import DashboardHome from '../pages/dashboard/DashboardHome';
-import ExpenseList from '../pages/expenses/ExpenseList';
+import MyExpenses from '../pages/expenses/MyExpenses';
 import SubmitExpense from '../pages/expenses/SubmitExpense';
 
 // In a real application, you would lazy load the page components here.
@@ -43,7 +43,7 @@ const AppRoutes = () => {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardHome />} />
             
-            <Route path="expenses" element={<ExpenseList />} />
+            <Route path="expenses" element={<MyExpenses />} />
             <Route path="expenses/new" element={<SubmitExpense />} />
 
             {/* Approvals route accessible by specific roles (e.g. manager) */}
