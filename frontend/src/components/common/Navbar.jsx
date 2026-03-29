@@ -7,6 +7,11 @@ import NotificationBell from './NotificationBell';
 
 const Navbar = ({ toggleMobileMenu }) => {
   const { user, role, displayRole, logout } = useAuth(); // Pull global session context
+  const {
+    selectedCurrency,
+    setSelectedCurrency,
+    currencyOptions = [],
+  } = useContext(CurrencyContext);
 
   const handleLogout = () => {
     logout();
