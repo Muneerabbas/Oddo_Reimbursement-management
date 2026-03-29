@@ -87,13 +87,11 @@ export async function initializeApprovalWorkflow(input: {
 }): Promise<void> {
   const rules = await fetchLatestRuleConfig(input.companyId);
   const selected = pickRule(rules, input.employeeId, input.amount);
-  if (!selected) {
-    await syncSubmissionStatus(input.expenseId, "approved");
-    await pool.query(`UPDATE expenses SET status = 'approved' WHERE id = $1`, [input.expenseId]);
-    return;
-  }
-
-  const firstStep = selected.steps[0];
+  const firstStep: RuleStep = selected?.steps?.[0] || {
+    id: "default-step-1",
+    mode: "role_percentage",
+    percentage: 100,
+  };
   const approvers = await resolveApproversForStep(input.companyId, input.employeeId, firstStep);
   if (approvers.length === 0) {
     await pool.query(`UPDATE expenses SET status = 'approved' WHERE id = $1`, [input.expenseId]);
@@ -110,7 +108,52 @@ export async function initializeApprovalWorkflow(input: {
   }
 }
 
-export async function listPendingApprovalsForApprover(companyId: number, approverId: number) {
+export async function backfillMissingApprovalRequestsForPendingExpenses(companyId: number): Promise<void> {
+  const result = await pool.query<{
+    id: number;
+    employee_id: number;
+    amount_original: string;
+  }>(
+    `
+      SELECT
+        e.id,
+        e.employee_id,
+        e.amount_original
+      FROM expenses e
+      LEFT JOIN approval_requests ar
+        ON ar.expense_id = e.id
+      WHERE e.company_id = $1
+        AND e.status = 'pending'
+      GROUP BY e.id, e.employee_id, e.amount_original
+      HAVING COUNT(ar.id) = 0
+      ORDER BY e.id ASC
+    `,
+    [companyId],
+  );
+
+  for (const row of result.rows) {
+    try {
+      await initializeApprovalWorkflow({
+        companyId,
+        employeeId: row.employee_id,
+        expenseId: row.id,
+        amount: Number(row.amount_original),
+      });
+    } catch (error) {
+      console.error("backfillMissingApprovalRequestsForPendingExpenses", {
+        companyId,
+        expenseId: row.id,
+        error,
+      });
+    }
+  }
+}
+
+export async function listPendingApprovalsForApprover(
+  companyId: number,
+  approverId: number,
+  includeAllCompanyPending = false,
+) {
   const result = await pool.query<{
     approval_id: number;
     expense_id: number;
@@ -138,10 +181,10 @@ export async function listPendingApprovalsForApprover(companyId: number, approve
      JOIN expenses e ON e.id = ar.expense_id
      JOIN users u ON u.id = e.employee_id
      WHERE e.company_id = $1
-       AND ar.approver_id = $2
+       AND ($3::boolean = true OR ar.approver_id = $2)
        AND ar.status = 'pending'
      ORDER BY ar.created_at DESC`,
-    [companyId, approverId],
+    [companyId, approverId, includeAllCompanyPending],
   );
 
   return result.rows.map((r) => ({
@@ -171,7 +214,9 @@ export async function resolveApprovalDecision(input: {
   approvalId: number;
   action: "approved" | "rejected";
   comment: string;
+  allowAdminOverride?: boolean;
 }) {
+  const allowAdminOverride = Boolean(input.allowAdminOverride);
   const approvalRes = await pool.query<{
     id: number;
     expense_id: number;
@@ -183,8 +228,10 @@ export async function resolveApprovalDecision(input: {
     `SELECT ar.id, ar.expense_id, ar.step_number, ar.status, e.employee_id, e.amount_original
      FROM approval_requests ar
      JOIN expenses e ON e.id = ar.expense_id
-     WHERE ar.id = $1 AND ar.approver_id = $2 AND e.company_id = $3`,
-    [input.approvalId, input.approverId, input.companyId],
+     WHERE ar.id = $1
+       AND e.company_id = $3
+       AND ($4::boolean = true OR ar.approver_id = $2)`,
+    [input.approvalId, input.approverId, input.companyId, allowAdminOverride],
   );
   const approval = approvalRes.rows[0];
   if (!approval) throw new Error("Approval request not found.");

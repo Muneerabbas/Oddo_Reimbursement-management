@@ -1,6 +1,7 @@
 import { pool } from "../config/db";
 import type { CreateExpenseSubmissionInput } from "../schemas/expenseSchemas";
 import {
+  backfillMissingApprovalRequestsForPendingExpenses,
   initializeApprovalWorkflow,
   listPendingApprovalsForApprover,
   resolveApprovalDecision,
@@ -444,7 +445,12 @@ export const listPendingApprovalsForReviewer = async (
   if (!canReviewExpenses(normalizedRole)) {
     return [];
   }
-  return listPendingApprovalsForApprover(companyId, reviewerId);
+  await backfillMissingApprovalRequestsForPendingExpenses(companyId);
+  return listPendingApprovalsForApprover(
+    companyId,
+    reviewerId,
+    isAdminRole(normalizedRole),
+  );
 };
 
 export const resolvePendingApproval = async (
@@ -471,6 +477,7 @@ export const resolvePendingApproval = async (
     approvalId: numericApprovalId,
     action,
     comment,
+    allowAdminOverride: isAdminRole(normalizedRole),
   });
 
   return {
