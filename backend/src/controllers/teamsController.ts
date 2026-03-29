@@ -38,13 +38,18 @@ function mapRoleRow(row: {
 }
 
 export async function listRoles(req: Request, res: Response): Promise<void> {
-  const companyId = req.auth!.companyId;
-  const r = await pool.query(
-    `SELECT id, name, base_role, permissions, created_at
-     FROM company_roles WHERE company_id = $1 ORDER BY name ASC`,
-    [companyId],
-  );
-  res.json({ roles: r.rows.map(mapRoleRow) });
+  try {
+    const companyId = req.auth!.companyId;
+    const r = await pool.query(
+      `SELECT id, name, base_role, permissions, created_at
+       FROM company_roles WHERE company_id = $1 ORDER BY name ASC`,
+      [companyId],
+    );
+    res.json({ roles: r.rows.map(mapRoleRow) });
+  } catch (e) {
+    console.error("listRoles", e);
+    res.status(500).json({ message: "Could not load team roles." });
+  }
 }
 
 export async function createRole(req: Request, res: Response): Promise<void> {
@@ -155,53 +160,63 @@ export async function deleteRole(req: Request, res: Response): Promise<void> {
 }
 
 export async function listMembers(req: Request, res: Response): Promise<void> {
-  const companyId = req.auth!.companyId;
-  const r = await pool.query(
-    `SELECT u.id, u.full_name, u.email, u.role, u.manager_id, u.company_role_id, u.hierarchy_tier,
-            cr.name AS team_role_name, cr.base_role AS team_role_base,
-            m.full_name AS manager_name
-     FROM users u
-     LEFT JOIN company_roles cr ON cr.id = u.company_role_id
-     LEFT JOIN users m ON m.id = u.manager_id AND m.company_id = u.company_id
-     WHERE u.company_id = $1
-     ORDER BY u.full_name ASC`,
-    [companyId],
-  );
-  res.json({
-    members: r.rows.map((row) => ({
-      id: row.id,
-      fullName: row.full_name,
-      email: row.email,
-      systemRole: row.role,
-      hierarchyTier: row.hierarchy_tier,
-      managerId: row.manager_id,
-      managerName: row.manager_name,
-      companyRole: row.company_role_id
-        ? {
-            id: row.company_role_id,
-            name: row.team_role_name,
-            baseRole: row.team_role_base,
-          }
-        : null,
-    })),
-  });
+  try {
+    const companyId = req.auth!.companyId;
+    const r = await pool.query(
+      `SELECT u.id, u.full_name, u.email, u.role, u.manager_id, u.company_role_id, u.hierarchy_tier,
+              cr.name AS team_role_name, cr.base_role AS team_role_base,
+              m.full_name AS manager_name
+       FROM users u
+       LEFT JOIN company_roles cr ON cr.id = u.company_role_id
+       LEFT JOIN users m ON m.id = u.manager_id AND m.company_id = u.company_id
+       WHERE u.company_id = $1
+       ORDER BY u.full_name ASC`,
+      [companyId],
+    );
+    res.json({
+      members: r.rows.map((row) => ({
+        id: row.id,
+        fullName: row.full_name,
+        email: row.email,
+        systemRole: row.role,
+        hierarchyTier: row.hierarchy_tier,
+        managerId: row.manager_id,
+        managerName: row.manager_name,
+        companyRole: row.company_role_id
+          ? {
+              id: row.company_role_id,
+              name: row.team_role_name,
+              baseRole: row.team_role_base,
+            }
+          : null,
+      })),
+    });
+  } catch (e) {
+    console.error("listMembers", e);
+    res.status(500).json({ message: "Could not load team members." });
+  }
 }
 
 export async function listManagers(req: Request, res: Response): Promise<void> {
-  const companyId = req.auth!.companyId;
-  const r = await pool.query(
-    `SELECT id, full_name, email FROM users
-     WHERE company_id = $1 AND role = 'manager'
-     ORDER BY full_name ASC`,
-    [companyId],
-  );
-  res.json({
-    managers: r.rows.map((row) => ({
-      id: row.id,
-      fullName: row.full_name,
-      email: row.email,
-    })),
-  });
+  try {
+    const companyId = req.auth!.companyId;
+    const r = await pool.query(
+      `SELECT id, full_name, email FROM users
+       WHERE company_id = $1 AND role = 'manager'
+       ORDER BY full_name ASC`,
+      [companyId],
+    );
+    res.json({
+      managers: r.rows.map((row) => ({
+        id: row.id,
+        fullName: row.full_name,
+        email: row.email,
+      })),
+    });
+  } catch (e) {
+    console.error("listManagers", e);
+    res.status(500).json({ message: "Could not load managers." });
+  }
 }
 
 export async function createMember(req: Request, res: Response): Promise<void> {
@@ -260,7 +275,7 @@ export async function createMember(req: Request, res: Response): Promise<void> {
       await pool.query(
         `INSERT INTO reporting_links (company_id, subordinate_id, supervisor_id)
          VALUES ($1, $2, $3)
-         ON CONFLICT ON CONSTRAINT reporting_links_pair_unique DO NOTHING`,
+         ON CONFLICT (company_id, subordinate_id, supervisor_id) DO NOTHING`,
         [companyId, row.id, body.managerId],
       );
     }

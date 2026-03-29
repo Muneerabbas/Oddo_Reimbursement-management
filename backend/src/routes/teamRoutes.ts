@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAdmin, requireAuth } from "../middleware/authMiddleware";
+import { ensureTeamsSchemaMiddleware } from "../middleware/ensureTeamsSchemaMiddleware";
 import {
   createMember,
   createRole,
@@ -20,7 +21,7 @@ import {
 
 const router = Router();
 
-router.use(requireAuth, requireAdmin);
+router.use(requireAuth, requireAdmin, ensureTeamsSchemaMiddleware);
 
 router.get("/roles", listRoles);
 router.post("/roles", createRole);

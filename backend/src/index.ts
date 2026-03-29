@@ -1,28 +1,16 @@
-import express from "express";
-import cors from "cors";
-import healthRoutes from "./routes/healthRoutes";
-import authRoutes from "./routes/authRoutes";
-import teamRoutes from "./routes/teamRoutes";
-import expenseRoutes from "./routes/expenseRoutes";
 import { env } from "./config/env";
 import { testDbConnection } from "./config/db";
-import billRoutes from "./routes/billRoutes";
+import { ensureCompanyTeamsSchema } from "./db/ensureCompanyTeamsSchema";
+import { ensureReportingHierarchySchema } from "./db/ensureReportingHierarchy";
+import { createApp } from "./app";
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-app.use(env.billUploadPublicPath, express.static(env.billUploadDir));
-
-app.use("/api", healthRoutes);
-app.use("/api", billRoutes);
-app.use("/api", expenseRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/teams", teamRoutes);
+const app = createApp();
 
 const startServer = async (): Promise<void> => {
   try {
     await testDbConnection();
+    await ensureCompanyTeamsSchema();
+    await ensureReportingHierarchySchema();
     console.log("Database connection successful");
   } catch (error) {
     if (env.dbRequiredOnStartup) {

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { ZodError } from "zod";
 import { pool } from "../config/db";
 import { createReportingLinkSchema, updateHierarchyTierSchema } from "../schemas/hierarchySchemas";
+import { buildSubordinateAdjacency, isUnderSupervisorTree } from "../utils/reportingTree";
 
 function sendZodError(res: Response, err: ZodError): void {
   const first = err.issues[0];
@@ -21,58 +22,54 @@ async function isUnderInReportingTree(
     `SELECT subordinate_id AS sub, supervisor_id AS sup FROM reporting_links WHERE company_id = $1`,
     [companyId],
   );
-  const bySupervisor = new Map<number, number[]>();
-  for (const row of r.rows) {
-    if (!bySupervisor.has(row.sup)) bySupervisor.set(row.sup, []);
-    bySupervisor.get(row.sup)!.push(row.sub);
-  }
-  const q = [...(bySupervisor.get(rootId) || [])];
-  const seen = new Set<number>();
-  while (q.length) {
-    const n = q.shift()!;
-    if (n === candidateId) return true;
-    if (seen.has(n)) continue;
-    seen.add(n);
-    for (const c of bySupervisor.get(n) || []) q.push(c);
-  }
-  return false;
+  const edges = r.rows.map((row) => ({
+    subordinateId: row.sub,
+    supervisorId: row.sup,
+  }));
+  const bySupervisor = buildSubordinateAdjacency(edges);
+  return isUnderSupervisorTree(bySupervisor, rootId, candidateId);
 }
 
 export async function getHierarchy(req: Request, res: Response): Promise<void> {
-  const companyId = req.auth!.companyId;
+  try {
+    const companyId = req.auth!.companyId;
 
-  const users = await pool.query(
-    `SELECT u.id, u.full_name, u.email, u.role, u.hierarchy_tier, u.manager_id,
-            cr.name AS team_role_name
-     FROM users u
-     LEFT JOIN company_roles cr ON cr.id = u.company_role_id
-     WHERE u.company_id = $1
-     ORDER BY u.hierarchy_tier ASC, u.full_name ASC`,
-    [companyId],
-  );
+    const users = await pool.query(
+      `SELECT u.id, u.full_name, u.email, u.role, u.hierarchy_tier, u.manager_id,
+              cr.name AS team_role_name
+       FROM users u
+       LEFT JOIN company_roles cr ON cr.id = u.company_role_id
+       WHERE u.company_id = $1
+       ORDER BY u.hierarchy_tier ASC, u.full_name ASC`,
+      [companyId],
+    );
 
-  const links = await pool.query(
-    `SELECT id, subordinate_id, supervisor_id FROM reporting_links WHERE company_id = $1`,
-    [companyId],
-  );
+    const links = await pool.query(
+      `SELECT id, subordinate_id, supervisor_id FROM reporting_links WHERE company_id = $1`,
+      [companyId],
+    );
 
-  res.json({
-    nodes: users.rows.map((row) => ({
-      id: row.id,
-      fullName: row.full_name,
-      email: row.email,
-      systemRole: row.role,
-      hierarchyTier: row.hierarchy_tier,
-      teamRoleName: row.team_role_name,
-      managerId: row.manager_id,
-    })),
-    links: links.rows.map((row) => ({
-      id: `e-${row.id}`,
-      dbId: row.id,
-      subordinateId: row.subordinate_id,
-      supervisorId: row.supervisor_id,
-    })),
-  });
+    res.json({
+      nodes: users.rows.map((row) => ({
+        id: row.id,
+        fullName: row.full_name,
+        email: row.email,
+        systemRole: row.role,
+        hierarchyTier: row.hierarchy_tier,
+        teamRoleName: row.team_role_name,
+        managerId: row.manager_id,
+      })),
+      links: links.rows.map((row) => ({
+        id: `e-${row.id}`,
+        dbId: row.id,
+        subordinateId: row.subordinate_id,
+        supervisorId: row.supervisor_id,
+      })),
+    });
+  } catch (e) {
+    console.error("getHierarchy", e);
+    res.status(500).json({ message: "Could not load hierarchy." });
+  }
 }
 
 export async function createReportingLink(req: Request, res: Response): Promise<void> {

@@ -52,7 +52,7 @@ const Teams = () => {
   const [memberForm, setMemberForm] = useState({
     fullName: '',
     email: '',
-    password: '',
+    passcode: '',
     companyRoleId: '',
     managerId: '',
   });
@@ -72,7 +72,13 @@ const Teams = () => {
       setMembers(m);
       setManagers(mgr);
     } catch (e) {
-      toast.error(e.message || 'Failed to load teams data.');
+      const status = e.response?.status;
+      const base = e.message || 'Failed to load teams data.';
+      toast.error(
+        status
+          ? `${base}${status === 503 ? ' (server could not update the database schema.)' : ''}`
+          : base,
+      );
     } finally {
       setLoading(false);
     }
@@ -182,7 +188,7 @@ const Teams = () => {
     setMemberForm({
       fullName: '',
       email: '',
-      password: '',
+      passcode: '',
       companyRoleId: String(role.id),
       managerId: '',
     });
@@ -194,19 +200,19 @@ const Teams = () => {
 
   const submitMember = async (e) => {
     e.preventDefault();
-    if (memberForm.password.length < 6) {
-      toast.error('Password must be at least 6 characters.');
+    if (memberForm.passcode.length < 6) {
+      toast.error('Passcode must be at least 6 characters.');
       return;
     }
     try {
       await teamService.createMember({
         fullName: memberForm.fullName.trim(),
         email: memberForm.email.trim(),
-        password: memberForm.password,
+        password: memberForm.passcode,
         companyRoleId: Number(memberForm.companyRoleId),
         managerId: needsManager && memberForm.managerId ? Number(memberForm.managerId) : null,
       });
-      toast.success('Team member added. They can sign in with this email and password.');
+      toast.success('Team member added. They sign in with this email and passcode.');
       setMemberModal(false);
       await load();
     } catch (err) {
@@ -314,7 +320,7 @@ const Teams = () => {
         </h1>
         <p className="text-slate-600 mt-1 text-sm max-w-2xl">
           Configure roles and rosters, or switch to <strong>Assign hierarchy</strong> for a live graph
-          of reporting lines (bottom → top). Members sign in with email and password.
+          of reporting lines (bottom → top). New members use email + passcode at login.
         </p>
         <div className="mt-6 inline-flex p-1 rounded-2xl bg-slate-100/90 border border-slate-200/80 shadow-inner gap-0.5">
           <button
@@ -687,15 +693,22 @@ const Teams = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Passcode (login)
+                </label>
                 <input
                   type="password"
-                  value={memberForm.password}
-                  onChange={(e) => setMemberForm((p) => ({ ...p, password: e.target.value }))}
+                  autoComplete="new-password"
+                  value={memberForm.passcode}
+                  onChange={(e) => setMemberForm((p) => ({ ...p, passcode: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                   required
                   minLength={6}
+                  placeholder="Used with email on the login page"
                 />
+                <p className="text-xs text-slate-500 mt-1">
+                  Same credential they enter as password on sign-in—minimum 6 characters.
+                </p>
               </div>
               {needsManager && (
                 <div>
