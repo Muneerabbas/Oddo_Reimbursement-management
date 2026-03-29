@@ -69,7 +69,22 @@ export const AuthProvider = ({ children }) => {
   const canAccess = useCallback((allowedRoles = []) => {
     if (!user) return false;
     if (allowedRoles.length === 0) return true;
-    return allowedRoles.includes(user.role);
+
+    const normalizedUserRole = String(user.role || '').toLowerCase();
+    const isAdmin = normalizedUserRole === 'admin';
+    const isEmployee = normalizedUserRole === 'employee';
+
+    return allowedRoles.some((allowedRole) => {
+      const normalizedAllowedRole = String(allowedRole || '').toLowerCase();
+
+      // "manager" gate now represents manager-like access:
+      // any role except explicit admin/employee.
+      if (normalizedAllowedRole === 'manager') {
+        return !isAdmin && !isEmployee;
+      }
+
+      return normalizedAllowedRole === normalizedUserRole;
+    });
   }, [user]);
 
   const contextValue = {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/common/Sidebar';
 import Navbar from '../components/common/Navbar';
+import Chatbot from '../components/common/Chatbot';
 
 const DashboardLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -32,6 +33,9 @@ const DashboardLayout = () => {
         </main>
 
       </div>
+      
+      {/* Global Action UI */}
+      <Chatbot />
 
     </div>
   );

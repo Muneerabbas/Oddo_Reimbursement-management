@@ -64,6 +64,11 @@ const buildApprovalNotifications = (requests = []) =>
 
 const inboxService = {
   async fetchNotifications(role) {
+    const normalizedRole = String(role || '').toLowerCase();
+    const isAdmin = normalizedRole === 'admin';
+    const isEmployee = normalizedRole === 'employee';
+    const isManagerLike = !isAdmin && !isEmployee;
+
     const tasks = [];
 
     tasks.push(
@@ -73,7 +78,7 @@ const inboxService = {
         .catch(() => []),
     );
 
-    if (role === 'manager' || role === 'admin') {
+    if (isManagerLike || isAdmin) {
       tasks.push(
         expenseService
           .getPendingApprovals()

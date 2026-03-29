@@ -10,6 +10,7 @@ import { getDefaultCurrencyForCountryCode } from "../utils/currencyFromCountryCo
 import { insertDefaultCompanyRoles } from "../utils/seedCompanyRoles";
 
 const BCRYPT_ROUNDS = 12;
+const FALLBACK_CURRENCY = "USD";
 
 type UserRow = {
   id: number;
@@ -97,10 +98,11 @@ export async function register(req: Request, res: Response): Promise<void> {
         res.status(400).json({ message: "Invalid country code." });
         return;
       }
-      res.status(502).json({
-        message: "Could not resolve currency for the selected country. Try again later.",
-      });
-      return;
+      defaultCurrency = FALLBACK_CURRENCY;
+      console.warn(
+        `Currency lookup failed for country code "${body.countryCode}". Falling back to ${FALLBACK_CURRENCY}.`,
+        e,
+      );
     }
 
     const companyDisplayName =

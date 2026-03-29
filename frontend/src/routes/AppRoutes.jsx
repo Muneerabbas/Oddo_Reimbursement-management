@@ -11,6 +11,7 @@ import RoleBasedDashboard from '../pages/dashboard/RoleBasedDashboard';
 import MyExpenses from '../pages/expenses/MyExpenses';
 import ScanReceipt from '../pages/expenses/ScanReceipt';
 import SubmitExpense from '../pages/expenses/SubmitExpense';
+import ManagerLogs from '../pages/logs/ManagerLogs';
 import Landing from '../pages/public/Landing';
 import Unauthorized from '../pages/system/Unauthorized';
 import Teams from '../pages/teams/Teams';
@@ -43,6 +44,10 @@ const AppRoutes = () => {
 
             <Route element={<ProtectedRoute allowedRoles={['manager', 'admin']} />}>
               <Route path="approvals" element={<Approvals />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['manager']} />}>
+              <Route path="logs" element={<ManagerLogs />} />
             </Route>
 
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

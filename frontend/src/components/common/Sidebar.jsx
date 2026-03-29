@@ -9,33 +9,37 @@ import {
   SlidersHorizontal,
   Shield,
   UsersRound,
+  ScrollText,
   X,
 } from 'lucide-react';
 
 const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
-  const { role } = useAuth(); // Destructure role for conditional rendering
+  const { role } = useAuth();
   const normalizedRole = typeof role === 'string' ? role.toLowerCase() : '';
   const isAdmin = normalizedRole === 'admin';
-  const isManager = normalizedRole === 'manager';
-  const isEmployee = normalizedRole === 'employee' || (!isAdmin && !isManager);
+  const isEmployee = normalizedRole === 'employee';
+  const isManagerLike = !isAdmin && !isEmployee;
 
   // Professional active/inactive styling for navigation links
   const baseLinkClasses = "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm";
   const inactiveClasses = "text-slate-600 hover:bg-slate-100 hover:text-slate-900";
   const activeClasses = "bg-primary text-white shadow-sm";
 
-  // Map out standard navigation logic cleanly
+  // Keep admin/employee behavior unchanged. Manager-like roles get logs and no My Expenses nav item.
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
     ...(isEmployee ? [{ label: 'Submit Expense', path: '/expenses/new', icon: <PlusCircle size={20} /> }] : []),
-    { label: 'My Expenses', path: '/expenses', icon: <List size={20} /> },
+    ...((isEmployee || isAdmin) ? [{ label: 'My Expenses', path: '/expenses', icon: <List size={20} /> }] : []),
   ];
 
-  if (isManager || isAdmin) {
+  if (isManagerLike || isAdmin) {
     navItems.push({ label: 'Approvals', path: '/approvals', icon: <CheckSquare size={20} /> });
   }
 
-  // Insert Admin specific panel conditionally
+  if (isManagerLike) {
+    navItems.push({ label: 'Logs', path: '/logs', icon: <ScrollText size={20} /> });
+  }
+
   if (isAdmin) {
     navItems.push({ label: 'Teams', path: '/teams', icon: <UsersRound size={20} /> });
     navItems.push({ label: 'User Management', path: '/admin/users', icon: <Shield size={20} /> });
@@ -78,7 +82,7 @@ const Sidebar = ({ isMobileOpen, setMobileOpen }) => {
               key={item.path}
               to={item.path}
               onClick={handleMobileClose}
-              end={item.path === '/dashboard'} // Dashboard root route exact match
+              end={item.path === '/dashboard' || item.path === '/expenses'}
               className={({ isActive }) => 
                 `${baseLinkClasses} ${isActive ? activeClasses : inactiveClasses}`
               }

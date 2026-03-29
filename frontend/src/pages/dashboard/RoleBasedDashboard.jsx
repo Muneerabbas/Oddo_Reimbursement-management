@@ -6,13 +6,14 @@ import EmployeeDashboard from './EmployeeDashboard';
 const RoleBasedDashboard = () => {
   const { user } = useAuth();
   const normalizedRole = typeof user?.role === 'string' ? user.role.toLowerCase() : '';
+  const isEmployee = normalizedRole === 'employee';
 
-  if (normalizedRole === 'admin' || normalizedRole === 'manager') {
-    return <DashboardHome />;
+  if (isEmployee) {
+    return <EmployeeDashboard />;
   }
 
-  // Default every non-admin/manager user to the employee dashboard.
-  return <EmployeeDashboard />;
+  // Admin + all non-employee roles (manager, director, etc.) share manager dashboard behavior.
+  return <DashboardHome />;
 };
 
 export default RoleBasedDashboard;
